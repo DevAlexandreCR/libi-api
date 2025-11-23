@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Business {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  password        String
+  phoneNumberId   String?   // Meta Phone Number ID
+  wabaId          String?   // WhatsApp Business Account ID
+  accessToken     String?   @db.Text // Long-lived access token
+  menuContext     String?   @db.Text // The menu text/json for the AI
+  orders          Order[]
+  sessions        Session[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  businessId     String
+  business       Business    @relation(fields: [businessId], references: [id])
+  customerPhone  String
+  items          Json        // Array of items { name, quantity, price, options }
+  total          Float
+  status         OrderStatus @default(PENDING)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Session {
+  id             String   @id @default(uuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id])
+  customerPhone  String
+  cart           Json?    // Current cart state
+  history        Json?    // Conversation history for AI
+  status         SessionStatus @default(ACTIVE)
+  lastActive     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([businessId, customerPhone])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
