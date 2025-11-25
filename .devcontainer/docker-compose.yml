@@ -25,7 +25,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-replace-me}
       META_VERIFY_TOKEN: ${META_VERIFY_TOKEN:-replace-me}
       META_GRAPH_API_BASE: https://graph.facebook.com
-      META_GRAPH_API_VERSION: v17.0
+      META_GRAPH_API_VERSION: v23.0
       PORT: 3001
     ports:
       - '3001:3001'
