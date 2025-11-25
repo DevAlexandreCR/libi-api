@@ -19,7 +19,7 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: mysql://libi:libi@db:3306/libi
+      DATABASE_URL: mysql://root:root@db:3306/libi
       JWT_SECRET: super-secret-change-me
       JWT_EXPIRES_IN: 7d
       OPENAI_API_KEY: ${OPENAI_API_KEY:-replace-me}
