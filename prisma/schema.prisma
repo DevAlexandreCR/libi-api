@@ -105,6 +105,7 @@ model Menu {
   name       String
   isActive   Boolean   @default(true)
   categories MenuCategory[]
+  items      MenuItem[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -136,6 +137,7 @@ model MenuItem {
   position    Int       @default(0)
   imageUrl    String?
   optionGroups MenuItemOptionGroup[]
+  orderItems  OrderItem[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -165,6 +167,7 @@ model MenuItemOption {
   name           String
   extraPrice     Decimal               @default(0) @db.Decimal(10, 2)
   position       Int                   @default(0)
+  orderItemOptions OrderItemOption[]
 
   @@index([optionGroupId])
 }
