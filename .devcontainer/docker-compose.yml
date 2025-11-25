@@ -32,6 +32,5 @@ services:
     volumes:
       # Mount the project root (one level up from .devcontainer) so package.json and source are available.
       - ..:/usr/src/app
-    command: npm run dev
 volumes:
   db_data:
