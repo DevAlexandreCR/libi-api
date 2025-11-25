@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  MERCHANT_ADMIN
+}
+
+enum WhatsAppLineStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_CONFIG
+}
+
+enum OptionGroupType {
+  SINGLE
+  MULTIPLE
+}
+
+enum SessionStatus {
+  NEW
+  COLLECTING_ITEMS
+  REVIEWING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PREPARATION
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryType {
+  delivery
+  pickup
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          UserRole
+  merchantId    String?
+  merchant      Merchant? @relation(fields: [merchantId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Merchant {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  description    String?
+  address        String?
+  phone          String?
+  timezone       String?
+  whatsappLines  WhatsAppLine[]
+  menus          Menu[]
+  sessions       Session[]
+  orders         Order[]
+  uploads        Upload[]
+  users          User[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model WhatsAppLine {
+  id              String             @id @default(cuid())
+  merchantId      String
+  merchant        Merchant           @relation(fields: [merchantId], references: [id])
+  wabaId          String?
+  phoneNumberId   String?            @unique
+  phoneNumber     String?
+  phoneDisplayName String?
+  metaBusinessId  String?
+  metaAccessToken String?
+  status          WhatsAppLineStatus @default(PENDING_CONFIG)
+  sessions        Session[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([merchantId])
+}
+
+model Menu {
+  id         String    @id @default(cuid())
+  merchantId String
+  merchant   Merchant  @relation(fields: [merchantId], references: [id])
+  name       String
+  isActive   Boolean   @default(true)
+  categories MenuCategory[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([merchantId])
+}
+
+model MenuCategory {
+  id          String   @id @default(cuid())
+  menuId      String
+  menu        Menu     @relation(fields: [menuId], references: [id])
+  name        String
+  description String?
+  position    Int      @default(0)
+  items       MenuItem[]
+
+  @@index([menuId])
+}
+
+model MenuItem {
+  id          String    @id @default(cuid())
+  menuId      String
+  menu        Menu      @relation(fields: [menuId], references: [id])
+  categoryId  String
+  category    MenuCategory @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?
+  basePrice   Decimal   @db.Decimal(10, 2)
+  isAvailable Boolean   @default(true)
+  position    Int       @default(0)
+  imageUrl    String?
+  optionGroups MenuItemOptionGroup[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([menuId])
+  @@index([categoryId])
+}
+
+model MenuItemOptionGroup {
+  id          String          @id @default(cuid())
+  menuItemId  String
+  menuItem    MenuItem        @relation(fields: [menuItemId], references: [id])
+  name        String
+  type        OptionGroupType
+  isRequired  Boolean
+  min         Int             @default(0)
+  max         Int             @default(1)
+  position    Int             @default(0)
+  options     MenuItemOption[]
+
+  @@index([menuItemId])
+}
+
+model MenuItemOption {
+  id             String                @id @default(cuid())
+  optionGroupId  String
+  optionGroup    MenuItemOptionGroup   @relation(fields: [optionGroupId], references: [id])
+  name           String
+  extraPrice     Decimal               @default(0) @db.Decimal(10, 2)
+  position       Int                   @default(0)
+
+  @@index([optionGroupId])
+}
+
+model Session {
+  id               String        @id @default(cuid())
+  merchantId       String
+  merchant         Merchant      @relation(fields: [merchantId], references: [id])
+  whatsappLineId   String
+  whatsappLine     WhatsAppLine  @relation(fields: [whatsappLineId], references: [id])
+  customerPhone    String
+  status           SessionStatus @default(NEW)
+  state            Json
+  lastInteractionAt DateTime     @default(now())
+  messages         SessionMessage[]
+  orders           Order[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([merchantId])
+  @@index([whatsappLineId])
+  @@index([customerPhone])
+}
+
+model SessionMessage {
+  id         String      @id @default(cuid())
+  sessionId  String
+  session    Session     @relation(fields: [sessionId], references: [id])
+  role       MessageRole
+  content    String
+  createdAt  DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  merchantId    String
+  merchant      Merchant     @relation(fields: [merchantId], references: [id])
+  sessionId     String
+  session       Session      @relation(fields: [sessionId], references: [id])
+  status        OrderStatus  @default(PENDING)
+  deliveryType  DeliveryType
+  address       String?
+  paymentMethod String?
+  notes         String?
+  estimatedTotal Decimal     @default(0) @db.Decimal(10, 2)
+  items         OrderItem[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([merchantId])
+  @@index([sessionId])
+}
+
+model OrderItem {
+  id         String    @id @default(cuid())
+  orderId    String
+  order      Order     @relation(fields: [orderId], references: [id])
+  menuItemId String?
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id])
+  name       String
+  quantity   Int
+  unitPrice  Decimal   @db.Decimal(10, 2)
+  subtotal   Decimal   @db.Decimal(10, 2)
+  options    OrderItemOption[]
+
+  @@index([orderId])
+}
+
+model OrderItemOption {
+  id                 String    @id @default(cuid())
+  orderItemId        String
+  orderItem          OrderItem @relation(fields: [orderItemId], references: [id])
+  menuItemOptionId   String?
+  menuItemOption     MenuItemOption? @relation(fields: [menuItemOptionId], references: [id])
+  name               String
+  extraPrice         Decimal @default(0) @db.Decimal(10, 2)
+
+  @@index([orderItemId])
+}
+
+model Upload {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+  fileName   String
+  filePath   String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+
+  @@index([merchantId])
+}

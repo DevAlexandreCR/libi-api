@@ -1,0 +1,24 @@
+{
+  "name": "libi-back",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "api",
+  "workspaceFolder": "/usr/src/app",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "prisma.prisma",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "remoteUser": "node",
+  "postCreateCommand": "npm install && npx prisma generate",
+  "portsAttributes": {
+    "3000": {
+      "label": "API"
+    }
+  }
+}
