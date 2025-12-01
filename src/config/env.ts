@@ -17,7 +17,7 @@ const envSchema = z.object({
   META_GRAPH_API_BASE: z.string().default('https://graph.facebook.com'),
   META_GRAPH_API_VERSION: z.string().default('v17.0'),
   UPLOAD_DIR: z.string().default('uploads'),
-  SESSION_EXPIRATION_MINUTES: z.coerce.number().default(45)
+  SESSION_EXPIRATION_MINUTES: z.coerce.number().default(45),
 })
 
 export type AppConfig = z.infer<typeof envSchema>

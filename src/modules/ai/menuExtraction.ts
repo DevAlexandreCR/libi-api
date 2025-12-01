@@ -62,8 +62,8 @@ export async function extractMenuFromImages(files: MenuExtractionFile[]) {
       type: 'image_url',
       image_url: {
         url: `data:${file.mimeType};base64,${base64}`,
-        detail: 'high'
-      }
+        detail: 'high',
+      },
     }
   })
 
@@ -74,11 +74,11 @@ export async function extractMenuFromImages(files: MenuExtractionFile[]) {
       content: [
         {
           type: 'text',
-          text: 'Extract the unified JSON menu from the following images and respond ONLY with JSON. Prices must stay in COP.'
+          text: 'Extract the unified JSON menu from the following images and respond ONLY with JSON. Prices must stay in COP.',
         },
-        ...imageContents
-      ]
-    }
+        ...imageContents,
+      ],
+    },
   ]
 
   const response = await callOpenAI(messages, 'json_object')

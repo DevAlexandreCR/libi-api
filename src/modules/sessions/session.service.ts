@@ -1,6 +1,6 @@
-import { MessageRole, SessionStatus, Prisma } from '@prisma/client';
-import { prisma } from '../../prisma/client';
-import { notFound } from '../../utils/errors';
+import { MessageRole, SessionStatus, Prisma } from '@prisma/client'
+import { prisma } from '../../prisma/client'
+import { notFound } from '../../utils/errors'
 
 export async function findOrCreateSession(
   merchantId: string,
@@ -12,24 +12,24 @@ export async function findOrCreateSession(
     where: {
       merchantId,
       customerPhone,
-      status: { not: SessionStatus.EXPIRED }
+      status: { not: SessionStatus.EXPIRED },
     },
-    orderBy: { createdAt: 'desc' }
-  });
+    orderBy: { createdAt: 'desc' },
+  })
 
-  const now = new Date();
+  const now = new Date()
   if (existing) {
-    const diffMinutes = (now.getTime() - existing.lastInteractionAt.getTime()) / (1000 * 60);
+    const diffMinutes = (now.getTime() - existing.lastInteractionAt.getTime()) / (1000 * 60)
     if (diffMinutes > expirationMinutes) {
       await prisma.session.update({
         where: { id: existing.id },
-        data: { status: SessionStatus.EXPIRED }
-      });
+        data: { status: SessionStatus.EXPIRED },
+      })
     } else {
       return prisma.session.update({
         where: { id: existing.id },
-        data: { lastInteractionAt: now }
-      });
+        data: { lastInteractionAt: now },
+      })
     }
   }
 
@@ -40,19 +40,15 @@ export async function findOrCreateSession(
       customerPhone,
       status: SessionStatus.NEW,
       state: {},
-      lastInteractionAt: now
-    }
-  });
+      lastInteractionAt: now,
+    },
+  })
 }
 
-export async function appendSessionMessage(
-  sessionId: string,
-  role: MessageRole,
-  content: string
-) {
+export async function appendSessionMessage(sessionId: string, role: MessageRole, content: string) {
   return prisma.sessionMessage.create({
-    data: { sessionId, role, content }
-  });
+    data: { sessionId, role, content },
+  })
 }
 
 export async function updateSessionState(
@@ -65,9 +61,9 @@ export async function updateSessionState(
     data: {
       state,
       status,
-      lastInteractionAt: new Date()
-    }
-  });
+      lastInteractionAt: new Date(),
+    },
+  })
 }
 
 export async function listSessions(merchantId: string) {
@@ -75,17 +71,17 @@ export async function listSessions(merchantId: string) {
     where: { merchantId },
     include: {
       messages: { orderBy: { createdAt: 'asc' }, take: 5 },
-      orders: true
+      orders: true,
     },
-    orderBy: { updatedAt: 'desc' }
-  });
+    orderBy: { updatedAt: 'desc' },
+  })
 }
 
 export async function getSessionDetail(sessionId: string) {
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { messages: { orderBy: { createdAt: 'asc' } }, orders: true, merchant: true }
-  });
-  if (!session) throw notFound('Session not found');
-  return session;
+    include: { messages: { orderBy: { createdAt: 'asc' } }, orders: true, merchant: true },
+  })
+  if (!session) throw notFound('Session not found')
+  return session
 }

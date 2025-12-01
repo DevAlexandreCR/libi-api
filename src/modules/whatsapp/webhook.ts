@@ -5,7 +5,7 @@ import { findLineByPhoneNumberId, sendWhatsAppText } from './whatsapp.service'
 import {
   appendSessionMessage,
   findOrCreateSession,
-  updateSessionState
+  updateSessionState,
 } from '../sessions/session.service'
 import { getActiveMenu } from '../menus/menu.service'
 import { callOrderAssistant } from '../ai/orderAssistant'
@@ -39,11 +39,11 @@ function buildMenuJson(menu: Awaited<ReturnType<typeof getActiveMenu>> | null) {
           options: og.options.map((opt) => ({
             id: opt.id,
             name: opt.name,
-            extra_price: Number(opt.extraPrice)
-          }))
-        }))
-      }))
-    }))
+            extra_price: Number(opt.extraPrice),
+          })),
+        })),
+      })),
+    })),
   }
 }
 
@@ -57,7 +57,6 @@ export function verifyWebhook(req: Request, res: Response) {
   const challenge = req.query['hub.challenge']
 
   if (mode === 'subscribe' && token === config.META_VERIFY_TOKEN) {
-
     return res.status(200).send(challenge)
   }
   return res.sendStatus(403)
@@ -96,7 +95,7 @@ export async function handleWebhook(req: Request, res: Response) {
     const history = await prisma.sessionMessage.findMany({
       where: { sessionId: session.id },
       orderBy: { createdAt: 'asc' },
-      take: 12
+      take: 12,
     })
 
     const aiResponse = await callOrderAssistant({
@@ -104,12 +103,12 @@ export async function handleWebhook(req: Request, res: Response) {
         name: merchant?.name,
         address: merchant?.address,
         phone: merchant?.phone,
-        timezone: merchant?.timezone
+        timezone: merchant?.timezone,
       },
       menu: buildMenuJson(menu),
       sessionState: (session.state as any) || {},
       lastUserMessage: text,
-      history: history.map((m) => ({ role: m.role, content: m.content }))
+      history: history.map((m) => ({ role: m.role, content: m.content })),
     })
 
     const newState = { ...(session.state as any), ...(aiResponse.session_updates || {}) }
@@ -118,7 +117,11 @@ export async function handleWebhook(req: Request, res: Response) {
     await appendSessionMessage(session.id, MessageRole.assistant, aiResponse.reply)
 
     if (aiResponse.order_summary?.should_create_order) {
-      await createOrderFromSummary(line.merchantId, session.id, aiResponse.order_summary.order as any)
+      await createOrderFromSummary(
+        line.merchantId,
+        session.id,
+        aiResponse.order_summary.order as any
+      )
     }
 
     await sendWhatsAppText(line.id, from, aiResponse.reply)

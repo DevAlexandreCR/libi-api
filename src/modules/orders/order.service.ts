@@ -1,25 +1,25 @@
-import { DeliveryType, OrderStatus, Prisma } from '@prisma/client';
-import { prisma } from '../../prisma/client';
-import { broadcastSSE } from '../../utils/sse';
-import { notFound } from '../../utils/errors';
+import { DeliveryType, OrderStatus, Prisma } from '@prisma/client'
+import { prisma } from '../../prisma/client'
+import { broadcastSSE } from '../../utils/sse'
+import { notFound } from '../../utils/errors'
 
 export type OrderSummaryInput = {
   items: Array<{
-    item_id?: string;
-    name: string;
-    quantity: number;
-    unit_price: number;
-    subtotal: number;
+    item_id?: string
+    name: string
+    quantity: number
+    unit_price: number
+    subtotal: number
     modifiers?: {
-      options?: Array<{ option_id?: string; name: string; extra_price: number }>;
-    };
-  }>;
-  delivery_type: 'delivery' | 'pickup' | null;
-  address?: string | null;
-  payment_method?: string | null;
-  notes?: string | null;
-  estimated_total: number;
-};
+      options?: Array<{ option_id?: string; name: string; extra_price: number }>
+    }
+  }>
+  delivery_type: 'delivery' | 'pickup' | null
+  address?: string | null
+  payment_method?: string | null
+  notes?: string | null
+  estimated_total: number
+}
 
 export async function createOrderFromSummary(
   merchantId: string,
@@ -46,17 +46,17 @@ export async function createOrderFromSummary(
             create: item.modifiers?.options?.map((opt) => ({
               menuItemOptionId: opt.option_id,
               name: opt.name,
-              extraPrice: new Prisma.Decimal(opt.extra_price || 0)
-            }))
-          }
-        }))
-      }
+              extraPrice: new Prisma.Decimal(opt.extra_price || 0),
+            })),
+          },
+        })),
+      },
     },
-    include: { items: { include: { options: true } } }
-  });
+    include: { items: { include: { options: true } } },
+  })
 
-  broadcastSSE(merchantId, { type: 'order_created', data: order });
-  return order;
+  broadcastSSE(merchantId, { type: 'order_created', data: order })
+  return order
 }
 
 export async function listOrders(
@@ -69,20 +69,20 @@ export async function listOrders(
       status: filters.status,
       createdAt: {
         gte: filters.from,
-        lte: filters.to
+        lte: filters.to,
       },
       session: filters.phone
         ? {
-            customerPhone: { contains: filters.phone }
+            customerPhone: { contains: filters.phone },
           }
-        : undefined
+        : undefined,
     },
     include: {
       items: { include: { options: true } },
-      session: true
+      session: true,
     },
-    orderBy: { createdAt: 'desc' }
-  });
+    orderBy: { createdAt: 'desc' },
+  })
 }
 
 export async function getOrderById(id: string) {
@@ -90,16 +90,16 @@ export async function getOrderById(id: string) {
     where: { id },
     include: {
       items: { include: { options: true } },
-      session: { include: { merchant: true } }
-    }
-  });
-  if (!order) throw notFound('Order not found');
-  return order;
+      session: { include: { merchant: true } },
+    },
+  })
+  if (!order) throw notFound('Order not found')
+  return order
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus) {
-  const order = await getOrderById(id);
-  const updated = await prisma.order.update({ where: { id }, data: { status } });
-  broadcastSSE(order.session.merchantId, { type: 'order_updated', data: updated });
-  return updated;
+  const order = await getOrderById(id)
+  const updated = await prisma.order.update({ where: { id }, data: { status } })
+  broadcastSSE(order.session.merchantId, { type: 'order_updated', data: updated })
+  return updated
 }

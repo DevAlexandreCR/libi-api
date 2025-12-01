@@ -1,20 +1,20 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { requireAuth, requireMerchantAccess } from '../../middleware/auth';
-import { validate } from '../../middleware/validate';
+import { Router } from 'express'
+import { z } from 'zod'
+import { requireAuth, requireMerchantAccess } from '../../middleware/auth'
+import { validate } from '../../middleware/validate'
 import {
   completeEmbeddedSignup,
   createWhatsAppLine,
   listWhatsAppLines,
-  updateWhatsAppLine
-} from './whatsapp.service';
-import { verifyWebhook, handleWebhook } from './webhook';
-import { WhatsAppLineStatus } from '@prisma/client';
+  updateWhatsAppLine,
+} from './whatsapp.service'
+import { verifyWebhook, handleWebhook } from './webhook'
+import { WhatsAppLineStatus } from '@prisma/client'
 
-const router = Router();
+const router = Router()
 
-router.get('/webhooks/whatsapp', verifyWebhook);
-router.post('/webhooks/whatsapp', handleWebhook);
+router.get('/webhooks/whatsapp', verifyWebhook)
+router.post('/webhooks/whatsapp', handleWebhook)
 
 router.get(
   '/merchants/:merchantId/whatsapp-lines',
@@ -22,13 +22,13 @@ router.get(
   requireMerchantAccess(),
   async (req, res, next) => {
     try {
-      const lines = await listWhatsAppLines(req.params.merchantId);
-      res.json(lines);
+      const lines = await listWhatsAppLines(req.params.merchantId)
+      res.json(lines)
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-);
+)
 
 router.post(
   '/merchants/:merchantId/whatsapp-lines',
@@ -36,13 +36,13 @@ router.post(
   requireMerchantAccess(),
   async (req, res, next) => {
     try {
-      const line = await createWhatsAppLine(req.params.merchantId, req.body);
-      res.status(201).json(line);
+      const line = await createWhatsAppLine(req.params.merchantId, req.body)
+      res.status(201).json(line)
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-);
+)
 
 router.post(
   '/merchants/:merchantId/whatsapp-lines/embedded-signup/complete',
@@ -56,19 +56,19 @@ router.post(
         waba_id: z.string(),
         business_id: z.string().optional(),
         phone_number: z.string().optional(),
-        phone_display_name: z.string().optional()
-      })
+        phone_display_name: z.string().optional(),
+      }),
     })
   ),
   async (req, res, next) => {
     try {
-      const line = await completeEmbeddedSignup(req.params.merchantId, req.body);
-      res.json(line);
+      const line = await completeEmbeddedSignup(req.params.merchantId, req.body)
+      res.json(line)
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-);
+)
 
 router.put(
   '/whatsapp-lines/:lineId',
@@ -77,18 +77,18 @@ router.put(
     z.object({
       body: z.object({
         status: z.nativeEnum(WhatsAppLineStatus).optional(),
-        phoneDisplayName: z.string().optional()
-      })
+        phoneDisplayName: z.string().optional(),
+      }),
     })
   ),
   async (req, res, next) => {
     try {
-      const line = await updateWhatsAppLine(req.params.lineId, req.body);
-      res.json(line);
+      const line = await updateWhatsAppLine(req.params.lineId, req.body)
+      res.json(line)
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-);
+)
 
-export default router;
+export default router

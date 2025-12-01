@@ -1,7 +1,7 @@
-import pino from 'pino';
-import { config } from '../config/env';
+import pino from 'pino'
+import { config } from '../config/env'
 
-const isDev = config.NODE_ENV !== 'production';
+const isDev = config.NODE_ENV !== 'production'
 
 export const logger = pino({
   level: isDev ? 'debug' : 'info',
@@ -10,8 +10,8 @@ export const logger = pino({
         target: 'pino-pretty',
         options: {
           colorize: true,
-          translateTime: 'SYS:standard'
-        }
+          translateTime: 'SYS:standard',
+        },
       }
-    : undefined
-});
+    : undefined,
+})

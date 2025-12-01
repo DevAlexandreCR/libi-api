@@ -56,13 +56,13 @@ export async function getActiveMenu(merchantId: string) {
             include: {
               optionGroups: {
                 orderBy: { position: 'asc' },
-                include: { options: { orderBy: { position: 'asc' } } }
-              }
-            }
-          }
-        }
-      }
-    }
+                include: { options: { orderBy: { position: 'asc' } } },
+              },
+            },
+          },
+        },
+      },
+    },
   })
   return menu
 }
@@ -80,8 +80,8 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
       data: {
         merchantId,
         name: menuJson.name || 'Menu',
-        isActive: true
-      }
+        isActive: true,
+      },
     })
 
     const categories = menuJson.categories || []
@@ -91,8 +91,8 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
           menuId: menu.id,
           name: cat.name || `Category ${catIdx + 1}`,
           description: cat.description,
-          position: cat.position ?? catIdx
-        }
+          position: cat.position ?? catIdx,
+        },
       })
 
       const items = cat.items || []
@@ -106,8 +106,8 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
             basePrice: new Prisma.Decimal(item.base_price ?? 0),
             isAvailable: item.is_available ?? true,
             position: item.position ?? itemIdx,
-            imageUrl: item.image_url ?? undefined
-          }
+            imageUrl: item.image_url ?? undefined,
+          },
         })
 
         const optionGroups = item.option_groups || []
@@ -120,8 +120,8 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
               isRequired: og.is_required ?? false,
               min: og.min ?? 0,
               max: og.max ?? 1,
-              position: og.position ?? ogIdx
-            }
+              position: og.position ?? ogIdx,
+            },
           })
 
           const options = og.options || []
@@ -131,8 +131,8 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
                 optionGroupId: createdGroup.id,
                 name: opt.name || `Option ${optIdx + 1}`,
                 extraPrice: new Prisma.Decimal(opt.extra_price ?? 0),
-                position: opt.position ?? optIdx
-              }
+                position: opt.position ?? optIdx,
+              },
             })
           }
         }
@@ -150,13 +150,13 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
               include: {
                 optionGroups: {
                   orderBy: { position: 'asc' },
-                  include: { options: { orderBy: { position: 'asc' } } }
-                }
-              }
-            }
-          }
-        }
-      }
+                  include: { options: { orderBy: { position: 'asc' } } },
+                },
+              },
+            },
+          },
+        },
+      },
     })
   })
 }

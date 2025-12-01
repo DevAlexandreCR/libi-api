@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { requireAuth, requireMerchantAccess } from '../../middleware/auth';
-import { validate } from '../../middleware/validate';
-import { getActiveMenu, setMenuItemAvailability } from './menu.service';
+import { Router } from 'express'
+import { z } from 'zod'
+import { requireAuth, requireMerchantAccess } from '../../middleware/auth'
+import { validate } from '../../middleware/validate'
+import { getActiveMenu, setMenuItemAvailability } from './menu.service'
 
-const router = Router();
+const router = Router()
 
 router.get(
   '/merchants/:merchantId/menus/current',
@@ -12,13 +12,13 @@ router.get(
   requireMerchantAccess(),
   async (req, res, next) => {
     try {
-      const menu = await getActiveMenu(req.params.merchantId);
-      res.json(menu);
+      const menu = await getActiveMenu(req.params.merchantId)
+      res.json(menu)
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-);
+)
 
 router.patch(
   '/menu-items/:menuItemId/availability',
@@ -26,12 +26,12 @@ router.patch(
   validate(z.object({ body: z.object({ isAvailable: z.boolean() }) })),
   async (req, res, next) => {
     try {
-      const item = await setMenuItemAvailability(req.params.menuItemId, req.body.isAvailable);
-      res.json(item);
+      const item = await setMenuItemAvailability(req.params.menuItemId, req.body.isAvailable)
+      res.json(item)
     } catch (err) {
-      next(err);
+      next(err)
     }
   }
-);
+)
 
-export default router;
+export default router

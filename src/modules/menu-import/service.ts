@@ -1,11 +1,11 @@
-import { prisma } from '../../prisma/client';
-import { Upload } from '@prisma/client';
-import { extractMenuFromImages } from '../ai/menuExtraction';
-import { replaceMenuFromJson } from '../menus/menu.service';
-import { notFound, forbidden } from '../../utils/errors';
+import { prisma } from '../../prisma/client'
+import { Upload } from '@prisma/client'
+import { extractMenuFromImages } from '../ai/menuExtraction'
+import { replaceMenuFromJson } from '../menus/menu.service'
+import { notFound, forbidden } from '../../utils/errors'
 
 export async function saveUploads(merchantId: string, files: Express.Multer.File[]) {
-  const records: Upload[] = [];
+  const records: Upload[] = []
   for (const file of files) {
     const upload = await prisma.upload.create({
       data: {
@@ -13,25 +13,25 @@ export async function saveUploads(merchantId: string, files: Express.Multer.File
         fileName: file.originalname,
         filePath: file.path,
         mimeType: file.mimetype,
-        size: file.size
-      }
-    });
-    records.push(upload);
+        size: file.size,
+      },
+    })
+    records.push(upload)
   }
-  return records;
+  return records
 }
 
 export async function processMenuExtraction(merchantId: string, uploadIds: string[]) {
-  const uploads = await prisma.upload.findMany({ where: { id: { in: uploadIds } } });
-  if (!uploads.length) throw notFound('Uploads not found');
+  const uploads = await prisma.upload.findMany({ where: { id: { in: uploadIds } } })
+  if (!uploads.length) throw notFound('Uploads not found')
   uploads.forEach((u) => {
     if (u.merchantId !== merchantId) {
-      throw forbidden('Upload does not belong to merchant');
+      throw forbidden('Upload does not belong to merchant')
     }
-  });
+  })
 
-  const files = uploads.map((u) => ({ path: u.filePath, mimeType: u.mimeType, name: u.fileName }));
-  const menuJson = await extractMenuFromImages(files);
-  const menu = await replaceMenuFromJson(merchantId, menuJson);
-  return { menuJson, menu };
+  const files = uploads.map((u) => ({ path: u.filePath, mimeType: u.mimeType, name: u.fileName }))
+  const menuJson = await extractMenuFromImages(files)
+  const menu = await replaceMenuFromJson(merchantId, menuJson)
+  return { menuJson, menu }
 }
