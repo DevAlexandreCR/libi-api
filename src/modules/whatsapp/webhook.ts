@@ -145,12 +145,15 @@ export async function handleWebhook(req: Request, res: Response) {
     }
 
     // Send message with or without confirmation button
-    if (aiResponse.show_confirm_button && !orderCreated) {
-      await sendWhatsAppInteractive(line.id, from, aiResponse.reply, [
-        { id: 'CONFIRM_ORDER', title: '✅ Confirmar Pedido' },
-      ])
-    } else {
-      await sendWhatsAppText(line.id, from, aiResponse.reply)
+    // Don't send message if reply is empty (courtesy messages after confirmation)
+    if (aiResponse.reply && aiResponse.reply.trim()) {
+      if (aiResponse.show_confirm_button && !orderCreated) {
+        await sendWhatsAppInteractive(line.id, from, aiResponse.reply, [
+          { id: 'CONFIRM_ORDER', title: '✅ Confirmar Pedido' },
+        ])
+      } else {
+        await sendWhatsAppText(line.id, from, aiResponse.reply)
+      }
     }
     res.sendStatus(200)
   } catch (err) {
