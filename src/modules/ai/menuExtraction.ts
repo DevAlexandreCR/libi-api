@@ -1,6 +1,6 @@
-import fs from 'fs';
-import { callOpenAI } from './openaiClient';
-import { logger } from '../../utils/logger';
+import fs from 'fs'
+import { callOpenAI } from './openaiClient'
+import { logger } from '../../utils/logger'
 
 const systemPrompt = `You are an assistant that extracts structured restaurant menus from images.
 You will receive one or multiple images of a fast-food restaurant menu (photos of a printed or digital menu).
@@ -46,36 +46,46 @@ Rules:
 - Group items into categories if the menu does so (e.g. Hamburguesas, Perros, Bebidas, Combos).
 - If there are sizes or variants (e.g. small/large, combo/sandwich only), represent them as option_groups.
 - Do not invent items that are not visible in the images.
-- Output only the JSON, with no additional commentary.`;
+- Output only the JSON, with no additional commentary.`
 
 export type MenuExtractionFile = {
-  path: string;
-  mimeType: string;
-  name: string;
-};
+  path: string
+  mimeType: string
+  name: string
+}
 
 export async function extractMenuFromImages(files: MenuExtractionFile[]) {
-  const base64Blocks = files
-    .map((file) => {
-      const buffer = fs.readFileSync(file.path);
-      const b64 = buffer.toString('base64');
-      return `Image: ${file.name}\nMime: ${file.mimeType}\nData: data:${file.mimeType};base64,${b64}`;
-    })
-    .join('\n---\n');
+  const imageContents = files.map((file) => {
+    const buffer = fs.readFileSync(file.path)
+    const base64 = buffer.toString('base64')
+    return {
+      type: 'image_url',
+      image_url: {
+        url: `data:${file.mimeType};base64,${base64}`,
+        detail: 'high'
+      }
+    }
+  })
 
   const messages = [
     { role: 'system' as const, content: systemPrompt },
     {
       role: 'user' as const,
-      content: `${systemPrompt}\n\nExtract the unified JSON menu from the following images and respond ONLY with JSON.\n${base64Blocks}`
+      content: [
+        {
+          type: 'text',
+          text: 'Extract the unified JSON menu from the following images and respond ONLY with JSON.'
+        },
+        ...imageContents
+      ]
     }
-  ];
+  ]
 
-  const response = await callOpenAI(messages, 'json_object');
+  const response = await callOpenAI(messages, 'json_object')
   try {
-    return JSON.parse(response.trim());
+    return JSON.parse(response.trim())
   } catch (err) {
-    logger.error({ err, response }, 'Failed to parse menu extraction response');
-    throw err;
+    logger.error({ err, response }, 'Failed to parse menu extraction response')
+    throw err
   }
 }
