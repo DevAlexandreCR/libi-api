@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { MessageRole, SessionStatus } from '@prisma/client'
 import { config } from '../../config/env'
-import { findLineByPhoneNumberId, sendWhatsAppText } from './whatsapp.service'
+import { findLineByPhoneNumberId, sendWhatsAppText, sendWhatsAppInteractive } from './whatsapp.service'
 import {
   appendSessionMessage,
   findOrCreateSession,
@@ -48,6 +48,10 @@ function buildMenuJson(menu: Awaited<ReturnType<typeof getActiveMenu>> | null) {
 }
 
 function sanitizeMessageBody(body: any) {
+  // Handle button responses
+  if (body?.interactive?.type === 'button_reply') {
+    return `BUTTON:${body.interactive.button_reply.id}`
+  }
   return body?.text?.body || body?.interactive?.text || JSON.stringify(body)
 }
 
@@ -116,15 +120,38 @@ export async function handleWebhook(req: Request, res: Response) {
     await updateSessionState(session.id, newState, newStatus)
     await appendSessionMessage(session.id, MessageRole.assistant, aiResponse.reply)
 
+    // Prevent duplicate order creation
+    let orderCreated = false
     if (aiResponse.order_summary?.should_create_order) {
-      await createOrderFromSummary(
-        line.merchantId,
-        session.id,
-        aiResponse.order_summary.order as any
-      )
+      // Check if an order already exists for this session
+      const existingOrder = await prisma.order.findFirst({
+        where: { sessionId: session.id },
+      })
+
+      if (!existingOrder) {
+        await createOrderFromSummary(
+          line.merchantId,
+          session.id,
+          aiResponse.order_summary.order as any
+        )
+        orderCreated = true
+        logger.info({ sessionId: session.id }, 'Order created successfully')
+      } else {
+        logger.warn(
+          { sessionId: session.id, orderId: existingOrder.id },
+          'Order already exists for this session, skipping creation'
+        )
+      }
     }
 
-    await sendWhatsAppText(line.id, from, aiResponse.reply)
+    // Send message with or without confirmation button
+    if (aiResponse.show_confirm_button && !orderCreated) {
+      await sendWhatsAppInteractive(line.id, from, aiResponse.reply, [
+        { id: 'CONFIRM_ORDER', title: '✅ Confirmar Pedido' },
+      ])
+    } else {
+      await sendWhatsAppText(line.id, from, aiResponse.reply)
+    }
     res.sendStatus(200)
   } catch (err) {
     logger.error({ err }, 'Failed to process webhook')
