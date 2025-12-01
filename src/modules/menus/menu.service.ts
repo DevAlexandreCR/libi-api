@@ -1,48 +1,48 @@
-import { Prisma } from '@prisma/client';
-import { prisma } from '../../prisma/client';
+import { Prisma } from '@prisma/client'
+import { prisma } from '../../prisma/client'
 
 type ImportedMenuOption = {
-  id?: string;
-  name?: string;
-  extra_price?: number;
-  position?: number;
-};
+  id?: string
+  name?: string
+  extra_price?: number
+  position?: number
+}
 
 type ImportedMenuOptionGroup = {
-  id?: string;
-  name?: string;
-  type?: string;
-  is_required?: boolean;
-  min?: number;
-  max?: number;
-  position?: number;
-  options?: ImportedMenuOption[];
-};
+  id?: string
+  name?: string
+  type?: string
+  is_required?: boolean
+  min?: number
+  max?: number
+  position?: number
+  options?: ImportedMenuOption[]
+}
 
 type ImportedMenuItem = {
-  id?: string;
-  name?: string;
-  description?: string;
-  base_price?: number;
-  image_url?: string | null;
-  is_available?: boolean;
-  position?: number;
-  option_groups?: ImportedMenuOptionGroup[];
-};
+  id?: string
+  name?: string
+  description?: string
+  base_price?: number
+  image_url?: string | null
+  is_available?: boolean
+  position?: number
+  option_groups?: ImportedMenuOptionGroup[]
+}
 
 type ImportedMenuCategory = {
-  id?: string;
-  name?: string;
-  description?: string;
-  position?: number;
-  items?: ImportedMenuItem[];
-};
+  id?: string
+  name?: string
+  description?: string
+  position?: number
+  items?: ImportedMenuItem[]
+}
 
 type ImportedMenu = {
-  menu_id?: string;
-  name?: string;
-  categories?: ImportedMenuCategory[];
-};
+  menu_id?: string
+  name?: string
+  categories?: ImportedMenuCategory[]
+}
 
 export async function getActiveMenu(merchantId: string) {
   const menu = await prisma.menu.findFirst({
@@ -63,18 +63,18 @@ export async function getActiveMenu(merchantId: string) {
         }
       }
     }
-  });
-  return menu;
+  })
+  return menu
 }
 
 export async function setMenuItemAvailability(menuItemId: string, isAvailable: boolean) {
-  const item = await prisma.menuItem.update({ where: { id: menuItemId }, data: { isAvailable } });
-  return item;
+  const item = await prisma.menuItem.update({ where: { id: menuItemId }, data: { isAvailable } })
+  return item
 }
 
 export async function replaceMenuFromJson(merchantId: string, menuJson: ImportedMenu) {
   return prisma.$transaction(async (tx) => {
-    await tx.menu.updateMany({ where: { merchantId }, data: { isActive: false } });
+    await tx.menu.updateMany({ where: { merchantId }, data: { isActive: false } })
 
     const menu = await tx.menu.create({
       data: {
@@ -82,9 +82,9 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
         name: menuJson.name || 'Menu',
         isActive: true
       }
-    });
+    })
 
-    const categories = menuJson.categories || [];
+    const categories = menuJson.categories || []
     for (const [catIdx, cat] of categories.entries()) {
       const createdCategory = await tx.menuCategory.create({
         data: {
@@ -93,9 +93,9 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
           description: cat.description,
           position: cat.position ?? catIdx
         }
-      });
+      })
 
-      const items = cat.items || [];
+      const items = cat.items || []
       for (const [itemIdx, item] of items.entries()) {
         const createdItem = await tx.menuItem.create({
           data: {
@@ -108,9 +108,9 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
             position: item.position ?? itemIdx,
             imageUrl: item.image_url ?? undefined
           }
-        });
+        })
 
-        const optionGroups = item.option_groups || [];
+        const optionGroups = item.option_groups || []
         for (const [ogIdx, og] of optionGroups.entries()) {
           const createdGroup = await tx.menuItemOptionGroup.create({
             data: {
@@ -122,9 +122,9 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
               max: og.max ?? 1,
               position: og.position ?? ogIdx
             }
-          });
+          })
 
-          const options = og.options || [];
+          const options = og.options || []
           for (const [optIdx, opt] of options.entries()) {
             await tx.menuItemOption.create({
               data: {
@@ -133,7 +133,7 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
                 extraPrice: new Prisma.Decimal(opt.extra_price ?? 0),
                 position: opt.position ?? optIdx
               }
-            });
+            })
           }
         }
       }
@@ -157,6 +157,6 @@ export async function replaceMenuFromJson(merchantId: string, menuJson: Imported
           }
         }
       }
-    });
-  });
+    })
+  })
 }
