@@ -1,6 +1,5 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../prisma/client';
-import { notFound } from '../../utils/errors';
 
 export async function getActiveMenu(merchantId: string) {
   const menu = await prisma.menu.findFirst({
@@ -22,7 +21,6 @@ export async function getActiveMenu(merchantId: string) {
       }
     }
   });
-  if (!menu) throw notFound('No active menu');
   return menu;
 }
 
