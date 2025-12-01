@@ -89,7 +89,7 @@ model WhatsAppLine {
   phoneNumber     String?
   phoneDisplayName String?
   metaBusinessId  String?
-  metaAccessToken String?
+  metaAccessToken String? @db.Text
   status          WhatsAppLineStatus @default(PENDING_CONFIG)
   sessions        Session[]
   createdAt       DateTime           @default(now())
