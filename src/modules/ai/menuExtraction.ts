@@ -42,7 +42,7 @@ Your task is to output a single JSON object in the following structure:
 }
 
 Rules:
-- Prices must be numeric (no currency symbol) and in the main currency of the menu.
+- Prices must be numeric (no currency symbol) and expressed in COP (Colombian Pesos).
 - Group items into categories if the menu does so (e.g. Hamburguesas, Perros, Bebidas, Combos).
 - If there are sizes or variants (e.g. small/large, combo/sandwich only), represent them as option_groups.
 - Do not invent items that are not visible in the images.
@@ -74,7 +74,7 @@ export async function extractMenuFromImages(files: MenuExtractionFile[]) {
       content: [
         {
           type: 'text',
-          text: 'Extract the unified JSON menu from the following images and respond ONLY with JSON.'
+          text: 'Extract the unified JSON menu from the following images and respond ONLY with JSON. Prices must stay in COP.'
         },
         ...imageContents
       ]
