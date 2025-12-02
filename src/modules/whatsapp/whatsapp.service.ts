@@ -134,3 +134,35 @@ export async function sendWhatsAppInteractive(
   await axios.post(url, payload, { headers })
   logger.info({ to, buttons }, 'Sent WhatsApp interactive message')
 }
+
+export async function sendWhatsAppList(
+  lineId: string,
+  to: string,
+  message: string,
+  buttonText: string,
+  sections: { title?: string; rows: { id: string; title: string; description?: string }[] }[]
+) {
+  const line = await prisma.whatsAppLine.findUnique({ where: { id: lineId } })
+  if (!line || !line.metaAccessToken || !line.phoneNumberId) {
+    throw badRequest('WhatsApp line is not configured')
+  }
+
+  const url = `${config.META_GRAPH_API_BASE}/${config.META_GRAPH_API_VERSION}/${line.phoneNumberId}/messages`
+  const payload = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'interactive',
+    interactive: {
+      type: 'list',
+      body: { text: message },
+      action: {
+        button: buttonText,
+        sections: sections,
+      },
+    },
+  }
+
+  const headers = { Authorization: `Bearer ${line.metaAccessToken}` }
+  await axios.post(url, payload, { headers })
+  logger.info({ to, sections }, 'Sent WhatsApp list message')
+}

@@ -1,7 +1,12 @@
 import { Request, Response } from 'express'
 import { MessageRole, SessionStatus } from '@prisma/client'
 import { config } from '../../config/env'
-import { findLineByPhoneNumberId, sendWhatsAppText, sendWhatsAppInteractive } from './whatsapp.service'
+import {
+  findLineByPhoneNumberId,
+  sendWhatsAppText,
+  sendWhatsAppInteractive,
+  sendWhatsAppList,
+} from './whatsapp.service'
 import {
   appendSessionMessage,
   findOrCreateSession,
@@ -51,6 +56,10 @@ function sanitizeMessageBody(body: any) {
   // Handle button responses
   if (body?.interactive?.type === 'button_reply') {
     return `BUTTON:${body.interactive.button_reply.id}`
+  }
+  // Handle list responses
+  if (body?.interactive?.type === 'list_reply') {
+    return `LIST:${body.interactive.list_reply.id}`
   }
   return body?.text?.body || body?.interactive?.text || JSON.stringify(body)
 }
@@ -151,6 +160,26 @@ export async function handleWebhook(req: Request, res: Response) {
         await sendWhatsAppInteractive(line.id, from, aiResponse.reply, [
           { id: 'CONFIRM_ORDER', title: '✅ Confirmar Pedido' },
         ])
+      } else if (aiResponse.interactive) {
+        // Handle interactive messages (buttons or lists)
+        if (aiResponse.interactive.type === 'buttons' && aiResponse.interactive.buttons) {
+          await sendWhatsAppInteractive(
+            line.id,
+            from,
+            aiResponse.reply,
+            aiResponse.interactive.buttons
+          )
+        } else if (aiResponse.interactive.type === 'list' && aiResponse.interactive.list) {
+          await sendWhatsAppList(
+            line.id,
+            from,
+            aiResponse.reply,
+            aiResponse.interactive.list.button_text,
+            aiResponse.interactive.list.sections
+          )
+        } else {
+          await sendWhatsAppText(line.id, from, aiResponse.reply)
+        }
       } else {
         await sendWhatsAppText(line.id, from, aiResponse.reply)
       }

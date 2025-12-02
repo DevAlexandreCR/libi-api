@@ -26,6 +26,14 @@ export type OrderAssistantResponse = {
     order: Record<string, unknown>
   }
   show_confirm_button?: boolean
+  interactive?: {
+    type: 'buttons' | 'list'
+    buttons?: { id: string; title: string }[]
+    list?: {
+      button_text: string
+      sections: { title?: string; rows: { id: string; title: string; description?: string }[] }[]
+    }
+  }
 }
 
 function sanitizeJson(content: string): string {
