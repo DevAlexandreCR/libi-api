@@ -64,21 +64,22 @@ model User {
 }
 
 model Merchant {
-  id             String          @id @default(cuid())
-  name           String
-  slug           String          @unique
-  description    String?
-  address        String?
-  phone          String?
-  timezone       String?
-  whatsappLines  WhatsAppLine[]
-  menus          Menu[]
-  sessions       Session[]
-  orders         Order[]
-  uploads        Upload[]
-  users          User[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  name            String
+  slug            String          @unique
+  description     String?
+  address         String?
+  phone           String?
+  timezone        String?
+  whatsappLines   WhatsAppLine[]
+  menus           Menu[]
+  sessions        Session[]
+  orders          Order[]
+  uploads         Upload[]
+  users           User[]
+  paymentAccounts PaymentAccount[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model WhatsAppLine {
@@ -205,20 +206,23 @@ model SessionMessage {
 }
 
 model Order {
-  id            String       @id @default(cuid())
-  merchantId    String
-  merchant      Merchant     @relation(fields: [merchantId], references: [id])
-  sessionId     String
-  session       Session      @relation(fields: [sessionId], references: [id])
-  status        OrderStatus  @default(PENDING)
-  deliveryType  DeliveryType
-  address       String?
-  paymentMethod String?
-  notes         String?
-  estimatedTotal Decimal     @default(0) @db.Decimal(10, 2)
-  items         OrderItem[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                      String       @id @default(cuid())
+  merchantId              String
+  merchant                Merchant     @relation(fields: [merchantId], references: [id])
+  sessionId               String
+  session                 Session      @relation(fields: [sessionId], references: [id])
+  status                  OrderStatus  @default(PENDING)
+  deliveryType            DeliveryType
+  address                 String?
+  paymentMethod           String?
+  notes                   String?
+  estimatedTotal          Decimal      @default(0) @db.Decimal(10, 2)
+  paymentProofUrl         String?
+  paymentVerified         Boolean      @default(false)
+  awaitingPaymentProof    Boolean      @default(false)
+  items                   OrderItem[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   @@index([merchantId])
   @@index([sessionId])
@@ -260,6 +264,30 @@ model Upload {
   mimeType   String
   size       Int
   createdAt  DateTime @default(now())
+
+  @@index([merchantId])
+}
+
+enum PaymentAccountType {
+  BANK_ACCOUNT
+  NEQUI
+  DAVIPLATA
+  BANCOLOMBIA
+  OTHER
+}
+
+model PaymentAccount {
+  id              String             @id @default(cuid())
+  merchantId      String
+  merchant        Merchant           @relation(fields: [merchantId], references: [id])
+  type            PaymentAccountType
+  accountNumber   String
+  accountHolder   String
+  bankName        String?
+  description     String?
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   @@index([merchantId])
 }

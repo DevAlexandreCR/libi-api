@@ -166,3 +166,26 @@ export async function sendWhatsAppList(
   await axios.post(url, payload, { headers })
   logger.info({ to, sections }, 'Sent WhatsApp list message')
 }
+
+export async function downloadWhatsAppMedia(lineId: string, mediaId: string): Promise<Buffer> {
+  const line = await prisma.whatsAppLine.findUnique({ where: { id: lineId } })
+  if (!line || !line.metaAccessToken) {
+    throw badRequest('WhatsApp line is not configured')
+  }
+
+  const headers = { Authorization: `Bearer ${line.metaAccessToken}` }
+
+  // Get media URL
+  const mediaUrl = `${config.META_GRAPH_API_BASE}/${config.META_GRAPH_API_VERSION}/${mediaId}`
+  const mediaInfoResponse = await axios.get(mediaUrl, { headers })
+  const downloadUrl = mediaInfoResponse.data.url
+
+  // Download media file
+  const fileResponse = await axios.get(downloadUrl, {
+    headers,
+    responseType: 'arraybuffer',
+  })
+
+  logger.info({ mediaId }, 'Downloaded WhatsApp media')
+  return Buffer.from(fileResponse.data)
+}

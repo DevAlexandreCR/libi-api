@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth, requireMerchantAccess } from '../../middleware/auth'
 import { validate } from '../../middleware/validate'
-import { getOrderById, listOrders, updateOrderStatus } from './order.service'
+import { getOrderById, listOrders, updateOrderStatus, verifyPayment } from './order.service'
 import { OrderStatus, UserRole } from '@prisma/client'
 import { registerSSE } from '../../utils/sse'
 import { forbidden } from '../../utils/errors'
@@ -68,6 +68,29 @@ router.patch(
       }
       const order = await updateOrderStatus(req.params.orderId, req.body.status)
       res.json(order)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+router.patch(
+  '/merchants/:merchantId/orders/:orderId/verify-payment',
+  requireAuth,
+  requireMerchantAccess(),
+  validate(
+    z.object({
+      body: z.object({ verified: z.boolean() }),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const order = await getOrderById(req.params.orderId)
+      if (order.merchantId !== req.params.merchantId) {
+        return next(forbidden())
+      }
+      const updated = await verifyPayment(req.params.orderId, req.body.verified)
+      res.json(updated)
     } catch (err) {
       next(err)
     }

@@ -6,6 +6,7 @@ import menuRoutes from '../modules/menus/routes'
 import menuImportRoutes from '../modules/menu-import/routes'
 import orderRoutes from '../modules/orders/routes'
 import sessionRoutes from '../modules/sessions/routes'
+import paymentAccountRoutes from '../modules/payment-accounts/routes'
 
 const router = Router()
 
@@ -16,5 +17,6 @@ router.use('/', menuRoutes)
 router.use('/', menuImportRoutes)
 router.use('/', orderRoutes)
 router.use('/', sessionRoutes)
+router.use('/merchants/:merchantId/payment-accounts', paymentAccountRoutes)
 
 export default router

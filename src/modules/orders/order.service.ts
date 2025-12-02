@@ -26,6 +26,10 @@ export async function createOrderFromSummary(
   sessionId: string,
   summary: OrderSummaryInput
 ) {
+  const paymentMethod = summary.payment_method?.toLowerCase() || ''
+  const isTransferPayment = paymentMethod.includes('transferencia') || 
+                            paymentMethod.includes('transfer')
+
   const order = await prisma.order.create({
     data: {
       merchantId,
@@ -35,6 +39,8 @@ export async function createOrderFromSummary(
       paymentMethod: summary.payment_method ?? null,
       notes: summary.notes ?? null,
       estimatedTotal: new Prisma.Decimal(summary.estimated_total || 0),
+      awaitingPaymentProof: isTransferPayment,
+      paymentVerified: !isTransferPayment,
       items: {
         create: summary.items.map((item) => ({
           menuItemId: item.item_id,
@@ -101,5 +107,29 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
   const order = await getOrderById(id)
   const updated = await prisma.order.update({ where: { id }, data: { status } })
   broadcastSSE(order.session.merchantId, { type: 'order_updated', data: updated })
+  return updated
+}
+
+export async function verifyPayment(orderId: string, verified: boolean) {
+  const order = await getOrderById(orderId)
+  
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      paymentVerified: verified,
+      awaitingPaymentProof: false,
+      status: verified ? OrderStatus.IN_PREPARATION : order.status,
+    },
+    include: {
+      items: { include: { options: true } },
+      session: { include: { merchant: true } },
+    },
+  })
+
+  broadcastSSE(order.session.merchantId, { 
+    type: 'payment_verified', 
+    data: updated 
+  })
+
   return updated
 }

@@ -1,11 +1,14 @@
 import { Request, Response } from 'express'
 import { MessageRole, SessionStatus } from '@prisma/client'
 import { config } from '../../config/env'
+import fs from 'fs'
+import path from 'path'
 import {
   findLineByPhoneNumberId,
   sendWhatsAppText,
   sendWhatsAppInteractive,
   sendWhatsAppList,
+  downloadWhatsAppMedia,
 } from './whatsapp.service'
 import {
   appendSessionMessage,
@@ -88,6 +91,8 @@ export async function handleWebhook(req: Request, res: Response) {
     const incoming = messages[0]
     const from = incoming.from
     const text = sanitizeMessageBody(incoming)
+    const hasImage = incoming.type === 'image'
+    const imageId = hasImage ? incoming.image?.id : null
 
     const line = await findLineByPhoneNumberId(phoneNumberId)
     if (!line) {
@@ -101,10 +106,78 @@ export async function handleWebhook(req: Request, res: Response) {
       from,
       config.SESSION_EXPIRATION_MINUTES
     )
+
+    // Check if there's an order awaiting payment proof
+    const pendingOrder = await prisma.order.findFirst({
+      where: {
+        sessionId: session.id,
+        awaitingPaymentProof: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    // If image is sent and there's an order awaiting proof, save it
+    if (hasImage && imageId && pendingOrder) {
+      try {
+        logger.info({ orderId: pendingOrder.id, imageId }, 'Downloading payment proof')
+        const imageBuffer = await downloadWhatsAppMedia(line.id, imageId)
+
+        // Save image to uploads/payment-proofs
+        const filename = `proof-${pendingOrder.id}-${Date.now()}.jpg`
+        const filepath = path.join('uploads', 'payment-proofs', filename)
+        fs.writeFileSync(filepath, imageBuffer)
+
+        // Update order with payment proof URL
+        await prisma.order.update({
+          where: { id: pendingOrder.id },
+          data: { paymentProofUrl: filepath },
+        })
+
+        // Broadcast event to merchant
+        const { broadcastSSE } = await import('../../utils/sse')
+        broadcastSSE(line.merchantId, {
+          type: 'payment_proof_uploaded',
+          data: { orderId: pendingOrder.id, paymentProofUrl: filepath },
+        })
+
+        logger.info({ orderId: pendingOrder.id, filepath }, 'Payment proof saved')
+
+        // Send acknowledgment message
+        await sendWhatsAppText(
+          line.id,
+          from,
+          'Gracias por enviar el comprobante. El comercio lo verificará y tu pedido será procesado.'
+        )
+
+        // Don't process this message with AI, just acknowledge
+        await appendSessionMessage(session.id, MessageRole.user, '[Imagen: Comprobante de pago]')
+        await appendSessionMessage(
+          session.id,
+          MessageRole.assistant,
+          'Gracias por enviar el comprobante. El comercio lo verificará y tu pedido será procesado.'
+        )
+
+        return res.sendStatus(200)
+      } catch (err) {
+        logger.error({ err, orderId: pendingOrder.id }, 'Failed to download payment proof')
+        // Continue with normal flow if download fails
+      }
+    }
+
     await appendSessionMessage(session.id, MessageRole.user, text)
 
     const merchant = await prisma.merchant.findUnique({ where: { id: line.merchantId } })
     const menu = await getActiveMenu(line.merchantId).catch(() => null)
+    const paymentAccounts = await prisma.paymentAccount.findMany({
+      where: { merchantId: line.merchantId, isActive: true },
+      select: {
+        type: true,
+        accountNumber: true,
+        accountHolder: true,
+        bankName: true,
+        description: true,
+      },
+    })
     const history = await prisma.sessionMessage.findMany({
       where: { sessionId: session.id },
       orderBy: { createdAt: 'asc' },
@@ -122,6 +195,13 @@ export async function handleWebhook(req: Request, res: Response) {
       sessionState: (session.state as any) || {},
       lastUserMessage: text,
       history: history.map((m) => ({ role: m.role, content: m.content })),
+      paymentAccounts: paymentAccounts.map((acc) => ({
+        type: acc.type,
+        accountNumber: acc.accountNumber,
+        accountHolder: acc.accountHolder,
+        bankName: acc.bankName ?? undefined,
+        description: acc.description ?? undefined,
+      })),
     })
 
     const newState = { ...(session.state as any), ...(aiResponse.session_updates || {}) }

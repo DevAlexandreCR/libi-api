@@ -16,6 +16,13 @@ export type OrderAssistantContext = {
   sessionState: Record<string, unknown>
   lastUserMessage: string
   history?: { role: 'user' | 'assistant' | 'system'; content: string }[]
+  paymentAccounts?: Array<{
+    type: string
+    accountNumber: string
+    accountHolder: string
+    bankName?: string
+    description?: string
+  }>
 }
 
 export type OrderAssistantResponse = {
@@ -60,6 +67,7 @@ export async function callOrderAssistant(
     `restaurant_info: ${JSON.stringify(context.restaurantInfo)}\n` +
     `menu: ${JSON.stringify(context.menu ?? {})}\n` +
     `session_state: ${JSON.stringify(context.sessionState)}\n` +
+    `payment_accounts: ${JSON.stringify(context.paymentAccounts ?? [])}\n` +
     `last_message: ${context.lastUserMessage}`
 
   messages.push({ role: 'user', content: userContent })
