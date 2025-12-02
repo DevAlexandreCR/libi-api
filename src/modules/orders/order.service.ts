@@ -27,8 +27,8 @@ export async function createOrderFromSummary(
   summary: OrderSummaryInput
 ) {
   const paymentMethod = summary.payment_method?.toLowerCase() || ''
-  const isTransferPayment = paymentMethod.includes('transferencia') || 
-                            paymentMethod.includes('transfer')
+  const isTransferPayment = paymentMethod.includes('transferencia') ||
+    paymentMethod.includes('transfer')
 
   const order = await prisma.order.create({
     data: {
@@ -79,8 +79,8 @@ export async function listOrders(
       },
       session: filters.phone
         ? {
-            customerPhone: { contains: filters.phone },
-          }
+          customerPhone: { contains: filters.phone },
+        }
         : undefined,
     },
     include: {
@@ -112,7 +112,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 
 export async function verifyPayment(orderId: string, verified: boolean) {
   const order = await getOrderById(orderId)
-  
+
   const updated = await prisma.order.update({
     where: { id: orderId },
     data: {
@@ -126,9 +126,9 @@ export async function verifyPayment(orderId: string, verified: boolean) {
     },
   })
 
-  broadcastSSE(order.session.merchantId, { 
-    type: 'payment_verified', 
-    data: updated 
+  broadcastSSE(order.session.merchantId, {
+    type: 'payment_verified',
+    data: updated
   })
 
   return updated
