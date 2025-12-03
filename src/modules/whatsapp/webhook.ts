@@ -107,6 +107,25 @@ export async function handleWebhook(req: Request, res: Response) {
       config.SESSION_EXPIRATION_MINUTES
     )
 
+    // Check if session is in manual mode - if so, don't process with AI
+    if (session.isManualMode) {
+      await appendSessionMessage(session.id, MessageRole.user, text)
+      
+      // Broadcast event to merchant to notify new message received
+      const { broadcastSSE } = await import('../../utils/sse')
+      broadcastSSE(line.merchantId, {
+        type: 'session_message_received',
+        data: { 
+          sessionId: session.id, 
+          customerPhone: from,
+          message: text,
+          isImage: hasImage
+        },
+      })
+      
+      return res.sendStatus(200)
+    }
+
     // Check if there's an order awaiting payment proof
     const pendingOrder = await prisma.order.findFirst({
       where: {

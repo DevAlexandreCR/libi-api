@@ -184,6 +184,7 @@ model Session {
   status           SessionStatus @default(NEW)
   state            Json
   lastInteractionAt DateTime     @default(now())
+  isManualMode     Boolean       @default(false)
   messages         SessionMessage[]
   orders           Order[]
   createdAt        DateTime      @default(now())

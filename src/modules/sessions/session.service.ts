@@ -85,3 +85,28 @@ export async function getSessionDetail(sessionId: string) {
   if (!session) throw notFound('Session not found')
   return session
 }
+
+export async function toggleManualMode(sessionId: string, isManualMode: boolean) {
+  const session = await prisma.session.findUnique({ where: { id: sessionId } })
+  if (!session) throw notFound('Session not found')
+  
+  return prisma.session.update({
+    where: { id: sessionId },
+    data: { isManualMode },
+  })
+}
+
+export async function sendManualMessage(sessionId: string, message: string) {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    include: { whatsappLine: true },
+  })
+  if (!session) throw notFound('Session not found')
+  
+  return {
+    session,
+    lineId: session.whatsappLine.id,
+    customerPhone: session.customerPhone,
+    message,
+  }
+}
