@@ -2,6 +2,7 @@ import { DeliveryType, OrderStatus, Prisma } from '@prisma/client'
 import { prisma } from '../../prisma/client'
 import { broadcastSSE } from '../../utils/sse'
 import { notFound } from '../../utils/errors'
+import { sendOrderStatusNotification } from '../whatsapp/whatsapp.service'
 
 export type OrderSummaryInput = {
   items: Array<{
@@ -106,7 +107,18 @@ export async function getOrderById(id: string) {
 export async function updateOrderStatus(id: string, status: OrderStatus) {
   const order = await getOrderById(id)
   const updated = await prisma.order.update({ where: { id }, data: { status } })
+
   broadcastSSE(order.session.merchantId, { type: 'order_updated', data: updated })
+
+  // Send WhatsApp notification to customer
+  await sendOrderStatusNotification(
+    order.session.merchantId,
+    order.session.customerPhone,
+    order.id,
+    status,
+    order.deliveryType
+  )
+
   return updated
 }
 

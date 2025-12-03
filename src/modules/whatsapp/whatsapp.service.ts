@@ -189,3 +189,59 @@ export async function downloadWhatsAppMedia(lineId: string, mediaId: string): Pr
   logger.info({ mediaId }, 'Downloaded WhatsApp media')
   return Buffer.from(fileResponse.data)
 }
+
+export async function sendOrderStatusNotification(
+  merchantId: string,
+  customerPhone: string,
+  orderId: string,
+  status: string,
+  deliveryType: string
+) {
+  const line = await prisma.whatsAppLine.findFirst({
+    where: { merchantId, status: WhatsAppLineStatus.ACTIVE },
+  })
+
+  if (!line || !line.id) {
+    logger.warn({ merchantId }, 'No active WhatsApp line found for merchant')
+    return
+  }
+
+  const statusMessages: Record<string, { delivery: string; pickup: string }> = {
+    PENDING: {
+      delivery: '⏳ Tu pedido ha sido recibido y está pendiente de confirmación.',
+      pickup: '⏳ Tu pedido ha sido recibido y está pendiente de confirmación.',
+    },
+    IN_PREPARATION: {
+      delivery: '👨‍🍳 ¡Tu pedido está siendo preparado!',
+      pickup: '👨‍🍳 ¡Tu pedido está siendo preparado!',
+    },
+    READY: {
+      delivery: '✅ ¡Tu pedido está listo y pronto será despachado!',
+      pickup: '✅ ¡Tu pedido está listo! Puedes pasar a recogerlo.',
+    },
+    DELIVERING: {
+      delivery: '🚗 Tu pedido está en camino. ¡Pronto llegará!',
+      pickup: '🚗 Tu pedido está en camino. ¡Pronto llegará!',
+    },
+    DELIVERED: {
+      delivery: '📦 ¡Tu pedido ha sido entregado! Gracias por tu compra.',
+      pickup: '📦 ¡Tu pedido ha sido entregado! Gracias por tu compra.',
+    },
+    CANCELLED: {
+      delivery: '❌ Tu pedido ha sido cancelado.',
+      pickup: '❌ Tu pedido ha sido cancelado.',
+    },
+  }
+
+  const messageType = deliveryType === 'pickup' ? 'pickup' : 'delivery'
+  const message =
+    statusMessages[status]?.[messageType] || `Tu pedido ha cambiado de estado a: ${status}`
+  const fullMessage = `${message}\n\n📋 *Pedido #${orderId.slice(-8)}*`
+
+  try {
+    await sendWhatsAppText(line.id, customerPhone, fullMessage)
+    logger.info({ orderId, status, customerPhone, deliveryType }, 'Order status notification sent')
+  } catch (error) {
+    logger.error({ error, orderId, status }, 'Failed to send order status notification')
+  }
+}
