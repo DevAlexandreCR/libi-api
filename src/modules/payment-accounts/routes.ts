@@ -8,15 +8,26 @@ import { validate } from '../../middleware/validate'
 const router = Router()
 
 const createPaymentAccountSchema = z.object({
-  type: z.nativeEnum(PaymentAccountType),
-  accountNumber: z.string().min(1),
-  accountHolder: z.string().min(1),
-  bankName: z.string().optional(),
-  description: z.string().optional(),
-  isActive: z.boolean().optional(),
+  body: z.object({
+    type: z.nativeEnum(PaymentAccountType),
+    accountNumber: z.string().min(1),
+    accountHolder: z.string().min(1),
+    bankName: z.string().optional().or(z.literal('')),
+    description: z.string().optional().or(z.literal('')),
+    isActive: z.boolean().optional(),
+  }),
 })
 
-const updatePaymentAccountSchema = createPaymentAccountSchema.partial()
+const updatePaymentAccountSchema = z.object({
+  body: z.object({
+    type: z.nativeEnum(PaymentAccountType).optional(),
+    accountNumber: z.string().min(1).optional(),
+    accountHolder: z.string().min(1).optional(),
+    bankName: z.string().optional().or(z.literal('')),
+    description: z.string().optional().or(z.literal('')),
+    isActive: z.boolean().optional(),
+  }),
+})
 
 // Create payment account
 router.post('/', requireAuth, validate(createPaymentAccountSchema), async (req, res, next) => {
