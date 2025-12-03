@@ -195,7 +195,8 @@ export async function sendOrderStatusNotification(
   customerPhone: string,
   orderId: string,
   status: string,
-  deliveryType: string
+  deliveryType: string,
+  paymentJustVerified = false
 ) {
   const line = await prisma.whatsAppLine.findFirst({
     where: { merchantId, status: WhatsAppLineStatus.ACTIVE },
@@ -212,8 +213,12 @@ export async function sendOrderStatusNotification(
       pickup: '⏳ Tu pedido ha sido recibido y está pendiente de confirmación.',
     },
     IN_PREPARATION: {
-      delivery: '👨‍🍳 ¡Tu pedido está siendo preparado!',
-      pickup: '👨‍🍳 ¡Tu pedido está siendo preparado!',
+      delivery: paymentJustVerified
+        ? '✅ Tu pago ha sido verificado. ¡Tu pedido está siendo preparado!'
+        : '👨‍🍳 ¡Tu pedido está siendo preparado!',
+      pickup: paymentJustVerified
+        ? '✅ Tu pago ha sido verificado. ¡Tu pedido está siendo preparado!'
+        : '👨‍🍳 ¡Tu pedido está siendo preparado!',
     },
     READY: {
       delivery: '✅ ¡Tu pedido está listo y pronto será despachado!',

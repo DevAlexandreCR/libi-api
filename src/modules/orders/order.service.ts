@@ -129,12 +129,14 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 export async function verifyPayment(orderId: string, verified: boolean) {
   const order = await getOrderById(orderId)
 
+  const newStatus = verified ? OrderStatus.IN_PREPARATION : order.status
+
   const updated = await prisma.order.update({
     where: { id: orderId },
     data: {
       paymentVerified: verified,
       awaitingPaymentProof: false,
-      status: verified ? OrderStatus.IN_PREPARATION : order.status,
+      status: newStatus,
     },
     include: {
       items: { include: { options: true } },
@@ -146,6 +148,18 @@ export async function verifyPayment(orderId: string, verified: boolean) {
     type: 'payment_verified',
     data: updated
   })
+
+  // Send WhatsApp notification to customer when payment is verified
+  if (verified) {
+    await sendOrderStatusNotification(
+      order.session.merchantId,
+      order.session.customerPhone,
+      orderId,
+      newStatus,
+      order.deliveryType,
+      true // paymentJustVerified
+    )
+  }
 
   return updated
 }
