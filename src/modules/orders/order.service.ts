@@ -44,18 +44,22 @@ export async function createOrderFromSummary(
       paymentVerified: !isTransferPayment,
       items: {
         create: summary.items.map((item) => ({
-          menuItemId: item.item_id,
+          menuItemId: item.item_id || null,
           name: item.name,
           quantity: item.quantity,
           unitPrice: new Prisma.Decimal(item.unit_price || 0),
           subtotal: new Prisma.Decimal(item.subtotal || 0),
-          options: {
-            create: item.modifiers?.options?.map((opt) => ({
-              menuItemOptionId: opt.option_id,
-              name: opt.name,
-              extraPrice: new Prisma.Decimal(opt.extra_price || 0),
-            })),
-          },
+          options: item.modifiers?.options
+            ? {
+              create: item.modifiers.options
+                .filter((opt) => opt.option_id) // Solo crear opciones con ID válido
+                .map((opt) => ({
+                  menuItemOptionId: opt.option_id,
+                  name: opt.name,
+                  extraPrice: new Prisma.Decimal(opt.extra_price || 0),
+                })),
+            }
+            : undefined,
         })),
       },
     },
