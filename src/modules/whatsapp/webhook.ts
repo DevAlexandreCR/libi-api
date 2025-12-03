@@ -116,6 +116,25 @@ export async function handleWebhook(req: Request, res: Response) {
       orderBy: { createdAt: 'desc' },
     })
 
+    // If there's a pending order but user didn't send an image, remind them
+    if (pendingOrder && !hasImage) {
+      await appendSessionMessage(session.id, MessageRole.user, text)
+
+      await sendWhatsAppText(
+        line.id,
+        from,
+        'Por favor, envía una foto del comprobante de pago para que podamos verificar tu transferencia. 📸'
+      )
+
+      await appendSessionMessage(
+        session.id,
+        MessageRole.assistant,
+        'Por favor, envía una foto del comprobante de pago para que podamos verificar tu transferencia. 📸'
+      )
+
+      return res.sendStatus(200)
+    }
+
     // If image is sent and there's an order awaiting proof, save it
     if (hasImage && imageId && pendingOrder) {
       try {
