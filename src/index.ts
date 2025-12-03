@@ -21,12 +21,12 @@ app.use(cors())
 app.use(express.json({ limit: '5mb' }))
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan('dev'))
-app.use('/uploads', express.static(uploadDir))
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+app.use(`${config.API_PREFIX}/uploads`, express.static(uploadDir))
 app.use(config.API_PREFIX, routes)
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' })
