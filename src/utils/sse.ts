@@ -14,7 +14,12 @@ export function registerSSE(merchantId: string, res: Response) {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable nginx buffering
   })
+
+  // Send initial connection message to activate browser's onopen event
+  res.write(`event: connected\n`)
+  res.write(`data: ${JSON.stringify({ message: 'SSE connection established', merchantId, timestamp: new Date().toISOString() })}\n\n`)
 
   const listener = (payload: SSEPayload) => {
     res.write(`event: ${payload.type}\n`)
