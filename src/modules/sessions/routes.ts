@@ -1,6 +1,11 @@
 import { Router } from 'express'
 import { requireAuth, requireMerchantAccess } from '../../middleware/auth'
-import { getSessionDetail, listSessions, toggleManualMode, sendManualMessage } from './session.service'
+import {
+  getSessionDetail,
+  listSessions,
+  toggleManualMode,
+  sendManualMessage,
+} from './session.service'
 import { forbidden, badRequest } from '../../utils/errors'
 import { sendWhatsAppText } from '../whatsapp/whatsapp.service'
 import { MessageRole } from '@prisma/client'

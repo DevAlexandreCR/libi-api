@@ -28,8 +28,8 @@ export async function createOrderFromSummary(
   summary: OrderSummaryInput
 ) {
   const paymentMethod = summary.payment_method?.toLowerCase() || ''
-  const isTransferPayment = paymentMethod.includes('transferencia') ||
-    paymentMethod.includes('transfer')
+  const isTransferPayment =
+    paymentMethod.includes('transferencia') || paymentMethod.includes('transfer')
 
   const order = await prisma.order.create({
     data: {
@@ -51,14 +51,14 @@ export async function createOrderFromSummary(
           subtotal: new Prisma.Decimal(item.subtotal || 0),
           options: item.modifiers?.options
             ? {
-              create: item.modifiers.options
-                .filter((opt) => opt.option_id) // Solo crear opciones con ID válido
-                .map((opt) => ({
-                  menuItemOptionId: opt.option_id,
-                  name: opt.name,
-                  extraPrice: new Prisma.Decimal(opt.extra_price || 0),
-                })),
-            }
+                create: item.modifiers.options
+                  .filter((opt) => opt.option_id) // Solo crear opciones con ID válido
+                  .map((opt) => ({
+                    menuItemOptionId: opt.option_id,
+                    name: opt.name,
+                    extraPrice: new Prisma.Decimal(opt.extra_price || 0),
+                  })),
+              }
             : undefined,
         })),
       },
@@ -84,8 +84,8 @@ export async function listOrders(
       },
       session: filters.phone
         ? {
-          customerPhone: { contains: filters.phone },
-        }
+            customerPhone: { contains: filters.phone },
+          }
         : undefined,
     },
     include: {
@@ -146,7 +146,7 @@ export async function verifyPayment(orderId: string, verified: boolean) {
 
   broadcastSSE(order.session.merchantId, {
     type: 'payment_verified',
-    data: updated
+    data: updated,
   })
 
   // Send WhatsApp notification to customer when payment is verified

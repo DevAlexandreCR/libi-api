@@ -110,19 +110,19 @@ export async function handleWebhook(req: Request, res: Response) {
     // Check if session is in manual mode - if so, don't process with AI
     if (session.isManualMode) {
       await appendSessionMessage(session.id, MessageRole.user, text)
-      
+
       // Broadcast event to merchant to notify new message received
       const { broadcastSSE } = await import('../../utils/sse')
       broadcastSSE(line.merchantId, {
         type: 'session_message_received',
-        data: { 
-          sessionId: session.id, 
+        data: {
+          sessionId: session.id,
           customerPhone: from,
           message: text,
-          isImage: hasImage
+          isImage: hasImage,
         },
       })
-      
+
       return res.sendStatus(200)
     }
 

@@ -47,6 +47,34 @@ npm test
 ```
 (Vitest sample covers order creation mapping.)
 
+## CLI Commands
+
+The project includes a CLI tool similar to Laravel's Artisan for development tasks.
+
+### SSE Testing
+
+Send test SSE events to the frontend for development:
+
+```bash
+# Basic usage
+npm run cli -- sse:test -m MERCHANT_ID -e EVENT_TYPE
+
+# Examples
+npm run cli -- sse:test -m cm123abc -e order_created
+npm run cli -- sse:test -m cm123abc -e order_updated -s IN_PREPARATION
+
+# Interactive testing script
+./test-sse-events.sh MERCHANT_ID
+```
+
+**Available events:**
+- `order_created` - Complete new order
+- `order_updated` - Status change (requires `-s STATUS`)
+- `payment_verified` - Payment verification
+- `payment_proof_uploaded` - Payment proof uploaded
+
+See `docs/CLI_USAGE.md` for complete documentation.
+
 ## Notes
 - OpenAI API key is required for WhatsApp bot replies and menu extraction.
 - Meta verify token (`META_VERIFY_TOKEN`) must match the webhook configuration in Meta.
