@@ -94,6 +94,16 @@ export async function toggleManualMode(sessionId: string, isManualMode: boolean)
   const updated = await prisma.session.update({
     where: { id: sessionId },
     data: { isManualMode },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        take: 50,
+      },
+      orders: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      },
+    },
   })
 
   // Emit SSE event
