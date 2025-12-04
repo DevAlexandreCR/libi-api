@@ -98,8 +98,9 @@ export async function sendWhatsAppText(lineId: string, to: string, message: stri
   }
 
   const headers = { Authorization: `Bearer ${line.metaAccessToken}` }
-  await axios.post(url, payload, { headers })
+  const response = await axios.post(url, payload, { headers })
   logger.info({ to }, 'Sent WhatsApp message')
+  return response.data.messages?.[0]?.id
 }
 
 export async function sendWhatsAppInteractive(

@@ -1,6 +1,7 @@
 import { MessageRole, SessionStatus, Prisma } from '@prisma/client'
 import { prisma } from '../../prisma/client'
 import { notFound } from '../../utils/errors'
+import { broadcastSSE } from '../../utils/sse'
 
 export async function findOrCreateSession(
   merchantId: string,
@@ -89,11 +90,23 @@ export async function getSessionDetail(sessionId: string) {
 export async function toggleManualMode(sessionId: string, isManualMode: boolean) {
   const session = await prisma.session.findUnique({ where: { id: sessionId } })
   if (!session) throw notFound('Session not found')
-  
-  return prisma.session.update({
+
+  const updated = await prisma.session.update({
     where: { id: sessionId },
     data: { isManualMode },
   })
+
+  // Emit SSE event
+  broadcastSSE(session.merchantId, {
+    type: 'session_manual_mode_changed',
+    data: {
+      sessionId: updated.id,
+      manualMode: updated.isManualMode,
+      customerPhone: updated.customerPhone,
+    },
+  })
+
+  return updated
 }
 
 export async function sendManualMessage(sessionId: string, message: string) {
@@ -102,7 +115,7 @@ export async function sendManualMessage(sessionId: string, message: string) {
     include: { whatsappLine: true },
   })
   if (!session) throw notFound('Session not found')
-  
+
   return {
     session,
     lineId: session.whatsappLine.id,
