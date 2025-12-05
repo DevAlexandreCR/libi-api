@@ -204,6 +204,21 @@ export async function handleWebhook(req: Request, res: Response) {
 
     await appendSessionMessage(session.id, MessageRole.user, text)
 
+    // Broadcast message_received event to merchant dashboard
+    const { broadcastSSE } = await import('../../utils/sse')
+    broadcastSSE(line.merchantId, {
+      type: 'message_received',
+      data: {
+        sessionId: session.id,
+        customerPhone: from,
+        message: {
+          role: 'user',
+          content: text,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    })
+
     const merchant = await prisma.merchant.findUnique({ where: { id: line.merchantId } })
     const menu = await getActiveMenu(line.merchantId).catch(() => null)
     const paymentAccounts = await prisma.paymentAccount.findMany({

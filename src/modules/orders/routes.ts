@@ -29,8 +29,9 @@ router.get(
   }
 )
 
+// Unified SSE endpoint for all merchant events (orders, sessions, messages, etc.)
 router.get(
-  '/merchants/:merchantId/orders/stream',
+  '/merchants/:merchantId/stream',
   requireAuth,
   requireMerchantAccess(),
   (req, res) => {

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { requireAuth, requireRole } from '../../middleware/auth'
+import { requireAuth, requireRole, requireMerchantAccess } from '../../middleware/auth'
 import { validate } from '../../middleware/validate'
 import {
   createMerchant,
@@ -9,6 +9,7 @@ import {
   listMerchants,
   updateMerchant,
 } from './merchant.service'
+import { triggerTestEvent } from './merchant.controller'
 import { UserRole } from '@prisma/client'
 
 const router = Router()
@@ -87,6 +88,21 @@ router.delete(
       next(err)
     }
   }
+)
+
+// Endpoint for CLI to trigger SSE events (development/testing)
+// Secured by SSE_TRIGGER_SECRET instead of user authentication
+router.post(
+  '/:merchantId/trigger-event',
+  validate(
+    z.object({
+      body: z.object({
+        event: z.string(),
+        data: z.any(),
+      }),
+    })
+  ),
+  triggerTestEvent
 )
 
 export default router

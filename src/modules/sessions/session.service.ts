@@ -34,7 +34,7 @@ export async function findOrCreateSession(
     }
   }
 
-  return prisma.session.create({
+  const newSession = await prisma.session.create({
     data: {
       merchantId,
       whatsappLineId,
@@ -44,6 +44,22 @@ export async function findOrCreateSession(
       lastInteractionAt: now,
     },
   })
+
+  // Emit SSE event for new session
+  broadcastSSE(merchantId, {
+    type: 'session_created',
+    data: {
+      id: newSession.id,
+      merchantId: newSession.merchantId,
+      customerPhone: newSession.customerPhone,
+      status: newSession.status,
+      isManualMode: newSession.isManualMode,
+      createdAt: newSession.createdAt,
+      lastInteractionAt: newSession.lastInteractionAt,
+    },
+  })
+
+  return newSession
 }
 
 export async function appendSessionMessage(sessionId: string, role: MessageRole, content: string) {
@@ -57,7 +73,7 @@ export async function updateSessionState(
   state: Prisma.JsonValue,
   status?: SessionStatus
 ) {
-  return prisma.session.update({
+  const updated = await prisma.session.update({
     where: { id: sessionId },
     data: {
       state,
@@ -65,6 +81,21 @@ export async function updateSessionState(
       lastInteractionAt: new Date(),
     },
   })
+
+  // Emit SSE event for session update (without full state/messages)
+  broadcastSSE(updated.merchantId, {
+    type: 'session_updated',
+    data: {
+      id: updated.id,
+      merchantId: updated.merchantId,
+      status: updated.status,
+      isManualMode: updated.isManualMode,
+      lastInteractionAt: updated.lastInteractionAt,
+      updatedAt: new Date(),
+    },
+  })
+
+  return updated
 }
 
 export async function listSessions(merchantId: string) {
