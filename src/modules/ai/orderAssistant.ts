@@ -25,7 +25,11 @@ export type OrderAssistantContext = {
   }>
 }
 
+export type AssistantIntent = 'GREETING' | 'ORDER' | 'SUPPORT' | 'UNKNOWN'
+
 export type OrderAssistantResponse = {
+  intent?: AssistantIntent
+  send_menu_images?: boolean
   reply: string
   session_updates: Record<string, unknown>
   order_summary: {
@@ -82,6 +86,8 @@ export async function callOrderAssistant(
       reply: 'Lo siento, hubo un problema procesando tu mensaje. ¿Puedes intentar nuevamente?',
       session_updates: context.sessionState,
       order_summary: { should_create_order: false, order: {} },
+      intent: 'UNKNOWN',
+      send_menu_images: false,
     }
   }
 }

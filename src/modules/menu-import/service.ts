@@ -3,6 +3,7 @@ import { Upload } from '@prisma/client'
 import { extractMenuFromImages } from '../ai/menuExtraction'
 import { replaceMenuFromJson } from '../menus/menu.service'
 import { notFound, forbidden } from '../../utils/errors'
+import { resolveUploadPath } from '../uploads/utils'
 
 export async function saveUploads(merchantId: string, files: Express.Multer.File[]) {
   const records: Upload[] = []
@@ -30,8 +31,19 @@ export async function processMenuExtraction(merchantId: string, uploadIds: strin
     }
   })
 
-  const files = uploads.map((u) => ({ path: u.filePath, mimeType: u.mimeType, name: u.fileName }))
+  const files = uploads.map((u) => ({
+    path: resolveUploadPath(u.filePath),
+    mimeType: u.mimeType,
+    name: u.fileName,
+  }))
   const menuJson = await extractMenuFromImages(files)
   const menu = await replaceMenuFromJson(merchantId, menuJson)
+  if (!menu) {
+    throw new Error('Menu creation failed')
+  }
+  await prisma.upload.updateMany({
+    where: { id: { in: uploadIds } },
+    data: { menuId: menu.id },
+  })
   return { menuJson, menu }
 }

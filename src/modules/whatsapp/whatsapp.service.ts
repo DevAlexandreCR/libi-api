@@ -1,9 +1,12 @@
 import axios from 'axios'
+import fs from 'fs'
+import path from 'path'
 import { Prisma, WhatsAppLineStatus } from '@prisma/client'
 import { prisma } from '../../prisma/client'
 import { badRequest, notFound } from '../../utils/errors'
 import { config } from '../../config/env'
 import { logger } from '../../utils/logger'
+import { resolveUploadPath } from '../uploads/utils'
 
 export type WhatsAppLinePayload = {
   waba_id?: string
@@ -166,6 +169,65 @@ export async function sendWhatsAppList(
   const headers = { Authorization: `Bearer ${line.metaAccessToken}` }
   await axios.post(url, payload, { headers })
   logger.info({ to, sections }, 'Sent WhatsApp list message')
+}
+
+export async function sendWhatsAppImage(
+  lineId: string,
+  to: string,
+  filePath: string,
+  mimeType?: string,
+  caption?: string
+) {
+  const line = await prisma.whatsAppLine.findUnique({ where: { id: lineId } })
+  if (!line || !line.metaAccessToken || !line.phoneNumberId) {
+    throw badRequest('WhatsApp line is not configured')
+  }
+
+  const absolutePath = resolveUploadPath(filePath)
+  if (!fs.existsSync(absolutePath)) {
+    logger.warn({ filePath }, 'WhatsApp image file not found')
+    return
+  }
+
+  const uploadUrl = `${config.META_GRAPH_API_BASE}/${config.META_GRAPH_API_VERSION}/${line.phoneNumberId}/media`
+  const fileBuffer = fs.readFileSync(absolutePath)
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append(
+    'file',
+    new Blob([fileBuffer], { type: mimeType || 'application/octet-stream' }),
+    path.basename(absolutePath)
+  )
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${line.metaAccessToken}` },
+    body: form,
+  })
+  const uploadJson = await uploadResponse.json().catch(() => ({}))
+  if (!uploadResponse.ok || !uploadJson?.id) {
+    logger.error(
+      { uploadJson, status: uploadResponse.status, filePath },
+      'Failed to upload WhatsApp image'
+    )
+    throw badRequest('Failed to upload media to WhatsApp')
+  }
+
+  const url = `${config.META_GRAPH_API_BASE}/${config.META_GRAPH_API_VERSION}/${line.phoneNumberId}/messages`
+  const payload = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'image',
+    image: {
+      id: uploadJson.id,
+      caption,
+    },
+  }
+
+  const headers = { Authorization: `Bearer ${line.metaAccessToken}` }
+  await axios.post(url, payload, { headers })
+  logger.info({ to, filePath }, 'Sent WhatsApp image')
+  return uploadJson.id as string
 }
 
 export async function downloadWhatsAppMedia(lineId: string, mediaId: string): Promise<Buffer> {

@@ -9,6 +9,7 @@ import {
   sendWhatsAppInteractive,
   sendWhatsAppList,
   downloadWhatsAppMedia,
+  sendWhatsAppImage,
 } from './whatsapp.service'
 import {
   appendSessionMessage,
@@ -107,8 +108,10 @@ export async function handleWebhook(req: Request, res: Response) {
       config.SESSION_EXPIRATION_MINUTES
     )
 
-    // Check if session is in manual mode - if so, don't process with AI
-    if (session.isManualMode) {
+    const isSupportSession = session.status === SessionStatus.SUPPORT
+
+    // Check if session is in manual mode or support - if so, don't process with AI
+    if (session.isManualMode || isSupportSession) {
       await appendSessionMessage(session.id, MessageRole.user, text)
 
       // Broadcast event to merchant to notify new message received
@@ -120,6 +123,7 @@ export async function handleWebhook(req: Request, res: Response) {
           customerPhone: from,
           message: text,
           isImage: hasImage,
+          status: session.status,
         },
       })
 
@@ -257,10 +261,45 @@ export async function handleWebhook(req: Request, res: Response) {
       })),
     })
 
-    const newState = { ...(session.state as any), ...(aiResponse.session_updates || {}) }
-    const newStatus = aiResponse.session_updates?.status as SessionStatus | undefined
+    const sessionState = (session.state as any) || {}
+    const menuImagesAlreadySent = Boolean(sessionState?.menu_images_sent)
+    const wantsMenuImages =
+      (aiResponse.send_menu_images || aiResponse.intent === 'GREETING') && !menuImagesAlreadySent
+
+    let menuImages: Awaited<ReturnType<typeof prisma.upload.findMany>> = []
+    if (wantsMenuImages && menu?.id) {
+      menuImages = await prisma.upload.findMany({
+        where: { menuId: menu.id },
+        orderBy: { createdAt: 'asc' },
+      })
+    }
+    const shouldSendMenuImages = wantsMenuImages && menuImages.length > 0
+    if (wantsMenuImages && !shouldSendMenuImages) {
+      logger.warn({ menuId: menu?.id }, 'Menu images requested but none found')
+    }
+
+    const newState = { ...sessionState, ...(aiResponse.session_updates || {}) }
+    if (shouldSendMenuImages && menuImages.length) {
+      newState.menu_images_sent = true
+    }
+
+    const newStatus =
+      (aiResponse.session_updates?.status as SessionStatus | undefined) ||
+      (aiResponse.intent === 'SUPPORT' ? SessionStatus.SUPPORT : undefined)
     await updateSessionState(session.id, newState, newStatus)
-    await appendSessionMessage(session.id, MessageRole.assistant, aiResponse.reply)
+
+    let replyToSend = aiResponse.reply
+    if (shouldSendMenuImages) {
+      replyToSend = `Hola 👋, gracias por escribir a ${
+        merchant?.name || 'nuestro restaurante'
+      }. Te comparto nuestra carta en imágenes. ¿Qué se te antoja hoy?`
+    }
+
+    if (aiResponse.intent === 'SUPPORT' && (!replyToSend || !replyToSend.trim())) {
+      replyToSend = `Tu mensaje ha sido marcado como soporte. ${
+        merchant?.name ? `Alguien de ${merchant.name}` : 'El comercio'
+      } te responderá pronto.`
+    }
 
     // Prevent duplicate order creation
     let orderCreated = false
@@ -288,9 +327,9 @@ export async function handleWebhook(req: Request, res: Response) {
 
     // Send message with or without confirmation button
     // Don't send message if reply is empty (courtesy messages after confirmation)
-    if (aiResponse.reply && aiResponse.reply.trim()) {
+    if (replyToSend && replyToSend.trim()) {
       if (aiResponse.show_confirm_button && !orderCreated) {
-        await sendWhatsAppInteractive(line.id, from, aiResponse.reply, [
+        await sendWhatsAppInteractive(line.id, from, replyToSend, [
           { id: 'CONFIRM_ORDER', title: '✅ Confirmar Pedido' },
         ])
       } else if (aiResponse.interactive) {
@@ -299,22 +338,39 @@ export async function handleWebhook(req: Request, res: Response) {
           await sendWhatsAppInteractive(
             line.id,
             from,
-            aiResponse.reply,
+            replyToSend,
             aiResponse.interactive.buttons
           )
         } else if (aiResponse.interactive.type === 'list' && aiResponse.interactive.list) {
           await sendWhatsAppList(
             line.id,
             from,
-            aiResponse.reply,
+            replyToSend,
             aiResponse.interactive.list.button_text,
             aiResponse.interactive.list.sections
           )
         } else {
-          await sendWhatsAppText(line.id, from, aiResponse.reply)
+          await sendWhatsAppText(line.id, from, replyToSend)
         }
       } else {
-        await sendWhatsAppText(line.id, from, aiResponse.reply)
+        await sendWhatsAppText(line.id, from, replyToSend)
+      }
+      await appendSessionMessage(session.id, MessageRole.assistant, replyToSend)
+    }
+
+    if (shouldSendMenuImages && menuImages.length) {
+      for (const [idx, image] of menuImages.entries()) {
+        try {
+          await sendWhatsAppImage(
+            line.id,
+            from,
+            image.filePath,
+            image.mimeType || undefined,
+            idx === 0 ? 'Te comparto nuestra carta 📋' : undefined
+          )
+        } catch (err) {
+          logger.error({ err, imageId: image.id }, 'Failed to send menu image')
+        }
       }
     }
     res.sendStatus(200)
