@@ -91,9 +91,20 @@ export async function handleWebhook(req: Request, res: Response) {
 
     const incoming = messages[0]
     const from = incoming.from
+    const messageId = incoming.id // WhatsApp message ID único
     const text = sanitizeMessageBody(incoming)
     const hasImage = incoming.type === 'image'
     const imageId = hasImage ? incoming.image?.id : null
+
+    // Verificar si este mensaje ya fue procesado (deduplicación)
+    const existingMessage = await prisma.sessionMessage.findFirst({
+      where: { whatsappMessageId: messageId },
+    })
+
+    if (existingMessage) {
+      logger.info({ messageId, sessionId: existingMessage.sessionId }, 'Duplicate message detected, skipping')
+      return res.sendStatus(200)
+    }
 
     const line = await findLineByPhoneNumberId(phoneNumberId)
     if (!line) {
@@ -112,7 +123,7 @@ export async function handleWebhook(req: Request, res: Response) {
 
     // Check if session is in manual mode or support - if so, don't process with AI
     if (session.isManualMode || isSupportSession) {
-      await appendSessionMessage(session.id, MessageRole.user, text)
+      await appendSessionMessage(session.id, MessageRole.user, text, messageId)
 
       // Broadcast event to merchant to notify new message received
       const { broadcastSSE } = await import('../../utils/sse')
@@ -141,7 +152,7 @@ export async function handleWebhook(req: Request, res: Response) {
 
     // If there's a pending order but user didn't send an image, remind them
     if (pendingOrder && !hasImage) {
-      await appendSessionMessage(session.id, MessageRole.user, text)
+      await appendSessionMessage(session.id, MessageRole.user, text, messageId)
 
       await sendWhatsAppText(
         line.id,
@@ -192,7 +203,7 @@ export async function handleWebhook(req: Request, res: Response) {
         )
 
         // Don't process this message with AI, just acknowledge
-        await appendSessionMessage(session.id, MessageRole.user, '[Imagen: Comprobante de pago]')
+        await appendSessionMessage(session.id, MessageRole.user, '[Imagen: Comprobante de pago]', messageId)
         await appendSessionMessage(
           session.id,
           MessageRole.assistant,
@@ -206,7 +217,7 @@ export async function handleWebhook(req: Request, res: Response) {
       }
     }
 
-    await appendSessionMessage(session.id, MessageRole.user, text)
+    await appendSessionMessage(session.id, MessageRole.user, text, messageId)
 
     // Broadcast message_received event to merchant dashboard
     const { broadcastSSE } = await import('../../utils/sse')

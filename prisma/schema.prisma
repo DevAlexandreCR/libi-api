@@ -198,14 +198,16 @@ model Session {
 }
 
 model SessionMessage {
-  id         String      @id @default(cuid())
-  sessionId  String
-  session    Session     @relation(fields: [sessionId], references: [id])
-  role       MessageRole
-  content    String      @db.LongText
-  createdAt  DateTime    @default(now())
+  id                 String      @id @default(cuid())
+  sessionId          String
+  session            Session     @relation(fields: [sessionId], references: [id])
+  role               MessageRole
+  content            String      @db.LongText
+  whatsappMessageId  String?     @unique
+  createdAt          DateTime    @default(now())
 
   @@index([sessionId])
+  @@index([whatsappMessageId])
 }
 
 model Order {

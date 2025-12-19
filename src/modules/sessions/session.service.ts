@@ -62,9 +62,25 @@ export async function findOrCreateSession(
   return newSession
 }
 
-export async function appendSessionMessage(sessionId: string, role: MessageRole, content: string) {
+export async function appendSessionMessage(
+  sessionId: string,
+  role: MessageRole,
+  content: string,
+  whatsappMessageId?: string
+) {
+  // Si hay whatsappMessageId, verificar si ya existe
+  if (whatsappMessageId) {
+    const existing = await prisma.sessionMessage.findFirst({
+      where: { whatsappMessageId },
+    })
+    if (existing) {
+      console.log('[appendSessionMessage] Message already exists, skipping:', whatsappMessageId)
+      return existing
+    }
+  }
+
   return prisma.sessionMessage.create({
-    data: { sessionId, role, content },
+    data: { sessionId, role, content, whatsappMessageId },
   })
 }
 
