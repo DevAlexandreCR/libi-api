@@ -301,15 +301,13 @@ export async function handleWebhook(req: Request, res: Response) {
 
     let replyToSend = aiResponse.reply
     if (shouldSendMenuImages) {
-      replyToSend = `Hola 👋, gracias por escribir a ${
-        merchant?.name || 'nuestro restaurante'
-      }. Te comparto nuestra carta en imágenes. ¿Qué se te antoja hoy?`
+      replyToSend = `Hola 👋, gracias por escribir a ${merchant?.name || 'nuestro restaurante'
+        }. Te comparto nuestra carta en imágenes. ¿Qué se te antoja hoy?`
     }
 
     if (aiResponse.intent === 'SUPPORT' && (!replyToSend || !replyToSend.trim())) {
-      replyToSend = `Tu mensaje ha sido marcado como soporte. ${
-        merchant?.name ? `Alguien de ${merchant.name}` : 'El comercio'
-      } te responderá pronto.`
+      replyToSend = `Tu mensaje ha sido marcado como soporte. ${merchant?.name ? `Alguien de ${merchant.name}` : 'El comercio'
+        } te responderá pronto.`
     }
 
     // Prevent duplicate order creation
