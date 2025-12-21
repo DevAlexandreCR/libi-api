@@ -44,7 +44,8 @@ router.get(
   ),
   async (req, res, next) => {
     try {
-      const list = await listDemoRequests({ status: req.query.status })
+      const status = req.query.status as DemoRequestStatus | undefined
+      const list = await listDemoRequests({ status })
       res.json(list)
     } catch (err) {
       next(err)
