@@ -3,7 +3,7 @@ import { Upload } from '@prisma/client'
 import { extractMenuFromImages } from '../ai/menuExtraction'
 import { replaceMenuFromJson } from '../menus/menu.service'
 import { notFound, forbidden } from '../../utils/errors'
-import { resolveUploadPath } from '../uploads/utils'
+import { resolveUploadPath } from '../uploads'
 
 export async function saveUploads(merchantId: string, files: Express.Multer.File[]) {
   const records: Upload[] = []

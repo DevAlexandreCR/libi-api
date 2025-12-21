@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth, requireMerchantAccess } from '../../middleware/auth'
-import { upload } from '../uploads/storage'
+import { upload } from '../uploads'
 import { saveUploads, processMenuExtraction } from './service'
 import { validate } from '../../middleware/validate'
 
