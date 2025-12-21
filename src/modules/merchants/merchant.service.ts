@@ -14,11 +14,11 @@ export type MerchantInput = {
 export async function listMerchants(search?: string) {
   const where: Prisma.MerchantWhereInput = search
     ? {
-        OR: [
-          { name: { contains: search } },
-          { slug: { contains: search } },
-        ],
-      }
+      OR: [
+        { name: { contains: search } },
+        { slug: { contains: search } },
+      ],
+    }
     : {}
   return prisma.merchant.findMany({
     where,
