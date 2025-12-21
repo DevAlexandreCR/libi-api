@@ -6,7 +6,7 @@ import { prisma } from '../../prisma/client'
 import { badRequest, notFound } from '../../utils/errors'
 import { config } from '../../config/env'
 import { logger } from '../../utils/logger'
-import { resolveUploadPath } from '../uploads'
+import { resolveUploadPath } from '../uploads/utils'
 
 export type WhatsAppLinePayload = {
   waba_id?: string
