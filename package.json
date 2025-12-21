@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json && npm run copy-prompts",
-    "copy-prompts": "mkdir -p dist/modules/ai/prompts && cp src/modules/ai/prompts/*.md dist/modules/ai/prompts/",
+    "copy-prompts": "mkdir -p dist/src/modules/ai/prompts && cp src/modules/ai/prompts/*.md dist/src/modules/ai/prompts/",
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "test": "vitest",
