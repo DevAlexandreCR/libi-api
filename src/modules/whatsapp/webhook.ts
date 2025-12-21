@@ -21,6 +21,7 @@ import { callOrderAssistant } from '../ai/orderAssistant'
 import { createOrderFromSummary } from '../orders/order.service'
 import { prisma } from '../../prisma/client'
 import { logger } from '../../utils/logger'
+import { checkBusinessHoursStatus } from './businessHours.service'
 
 function buildMenuJson(menu: Awaited<ReturnType<typeof getActiveMenu>> | null) {
   if (!menu) return null
@@ -110,6 +111,23 @@ export async function handleWebhook(req: Request, res: Response) {
     if (!line) {
       logger.warn({ phoneNumberId }, 'Webhook for unknown phone number')
       return res.sendStatus(404)
+    }
+
+    // Check if bot is manually disabled for this line
+    if (!line.botEnabled) {
+      logger.info({ lineId: line.id, from }, 'Bot is manually disabled for this line')
+      return res.sendStatus(200)
+    }
+
+    // Check business hours at merchant level
+    const businessStatus = await checkBusinessHoursStatus(line.merchantId)
+    if (!businessStatus.shouldRespond) {
+      // If there's a specific message (closed hours), send it
+      if (businessStatus.message) {
+        await sendWhatsAppText(line.id, from, businessStatus.message)
+      }
+      // Don't process the message further
+      return res.sendStatus(200)
     }
 
     const session = await findOrCreateSession(

@@ -79,6 +79,7 @@ model Merchant {
   uploads         Upload[]
   users           User[]
   paymentAccounts PaymentAccount[]
+  businessHours   BusinessHours[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -94,11 +95,38 @@ model WhatsAppLine {
   metaBusinessId  String?
   metaAccessToken String? @db.Text
   status          WhatsAppLineStatus @default(PENDING_CONFIG)
+  botEnabled      Boolean            @default(true)
   sessions        Session[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
   @@index([merchantId])
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model BusinessHours {
+  id              String      @id @default(cuid())
+  merchantId      String
+  merchant        Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  dayOfWeek       DayOfWeek
+  isEnabled       Boolean     @default(true)
+  openTime        String      // Format: "HH:mm" (e.g., "09:00")
+  closeTime       String      // Format: "HH:mm" (e.g., "22:00")
+  crossesMidnight Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([merchantId])
+  @@unique([merchantId, dayOfWeek])
 }
 
 model Menu {

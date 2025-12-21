@@ -7,9 +7,15 @@ import {
   createWhatsAppLine,
   listWhatsAppLines,
   updateWhatsAppLine,
+  toggleBotEnabled,
 } from './whatsapp.service'
 import { verifyWebhook, handleWebhook } from './webhook'
-import { WhatsAppLineStatus } from '@prisma/client'
+import { WhatsAppLineStatus, DayOfWeek } from '@prisma/client'
+import {
+  getBusinessHours,
+  upsertBusinessHours,
+  checkBusinessHoursStatus,
+} from './businessHours.service'
 
 const router = Router()
 
@@ -85,6 +91,86 @@ router.put(
     try {
       const line = await updateWhatsAppLine(req.params.lineId, req.body)
       res.json(line)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+// Toggle bot enabled/disabled
+router.patch(
+  '/whatsapp-lines/:lineId/bot-enabled',
+  requireAuth,
+  validate(
+    z.object({
+      body: z.object({
+        botEnabled: z.boolean(),
+      }),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const line = await toggleBotEnabled(req.params.lineId, req.body.botEnabled)
+      res.json(line)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+// Get business hours
+router.get(
+  '/merchants/:merchantId/business-hours',
+  requireAuth,
+  requireMerchantAccess(),
+  async (req, res, next) => {
+    try {
+      const hours = await getBusinessHours(req.params.merchantId)
+      res.json(hours)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+// Update business hours
+router.put(
+  '/merchants/:merchantId/business-hours',
+  requireAuth,
+  requireMerchantAccess(),
+  validate(
+    z.object({
+      body: z.array(
+        z.object({
+          dayOfWeek: z.nativeEnum(DayOfWeek),
+          isEnabled: z.boolean(),
+          openTime: z.string().regex(/^\d{2}:\d{2}$/),
+          closeTime: z.string().regex(/^\d{2}:\d{2}$/),
+          crossesMidnight: z.boolean(),
+        })
+      ),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      await upsertBusinessHours(req.params.merchantId, req.body)
+      const hours = await getBusinessHours(req.params.merchantId)
+      res.json(hours)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+// Check business hours status
+router.get(
+  '/merchants/:merchantId/business-hours/status',
+  requireAuth,
+  requireMerchantAccess(),
+  async (req, res, next) => {
+    try {
+      const status = await checkBusinessHoursStatus(req.params.merchantId)
+      res.json(status)
     } catch (err) {
       next(err)
     }

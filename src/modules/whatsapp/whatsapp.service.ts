@@ -81,7 +81,14 @@ export async function updateWhatsAppLine(id: string, data: Prisma.WhatsAppLineUp
   if (!existing) throw notFound('WhatsApp line not found')
   return prisma.whatsAppLine.update({ where: { id }, data })
 }
-
+export async function toggleBotEnabled(id: string, botEnabled: boolean) {
+  const line = await prisma.whatsAppLine.findUnique({ where: { id } })
+  if (!line) throw notFound('WhatsApp line not found')
+  return prisma.whatsAppLine.update({
+    where: { id },
+    data: { botEnabled },
+  })
+}
 export async function findLineByPhoneNumberId(phoneNumberId: string) {
   return prisma.whatsAppLine.findUnique({ where: { phoneNumberId } })
 }
