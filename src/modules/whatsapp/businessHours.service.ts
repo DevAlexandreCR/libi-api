@@ -99,6 +99,7 @@ export async function checkBusinessHoursStatus(merchantId: string, timezone = 'A
     minute: '2-digit',
     hour12: false,
   }).format(now)
+  const currentMinutes = timeToMinutes(localTime)
 
   const localDate = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
@@ -122,8 +123,11 @@ export async function checkBusinessHoursStatus(merchantId: string, timezone = 'A
 
   // Si hoy no hay servicio
   if (!todayHours || !todayHours.isEnabled) {
-    const nextBusinessDay = findNextBusinessDay(merchant.businessHours, currentDay)
-    const message = buildClosedMessage(todayHours ? 'closed_today' : 'no_service_today', nextBusinessDay)
+    const nextBusinessDay = findNextOpenSchedule(merchant.businessHours, currentDay, currentMinutes)
+    const message = buildClosedMessage(
+      todayHours ? 'closed_today' : 'no_service_today',
+      nextBusinessDay
+    )
     return { shouldRespond: false, message }
   }
 
@@ -149,12 +153,8 @@ export async function checkBusinessHoursStatus(merchantId: string, timezone = 'A
     }
 
     // Estamos fuera de horario
-    const message = buildClosedMessage('outside_hours', {
-      day: currentDay,
-      openTime: todayHours.openTime,
-      closeTime: todayHours.closeTime,
-      crossesMidnight: todayHours.crossesMidnight,
-    })
+    const nextSchedule = findNextOpenSchedule(merchant.businessHours, currentDay, currentMinutes)
+    const message = buildClosedMessage('outside_hours', nextSchedule)
     return { shouldRespond: false, message }
   }
 
@@ -200,26 +200,56 @@ function getPreviousDay(day: DayOfWeek): DayOfWeek {
 }
 
 /**
- * Encontrar el próximo día de servicio
+ * Encontrar el siguiente horario de atención disponible
  */
-function findNextBusinessDay(
-  businessHours: Array<{ dayOfWeek: DayOfWeek; isEnabled: boolean; openTime: string; closeTime: string }>,
-  currentDay: DayOfWeek
+function findNextOpenSchedule(
+  businessHours: Array<{
+    dayOfWeek: DayOfWeek
+    isEnabled: boolean
+    openTime: string
+    closeTime: string
+    crossesMidnight?: boolean
+  }>,
+  currentDay: DayOfWeek,
+  currentMinutes: number
 ) {
   const currentIndex = DAYS_ORDER.indexOf(currentDay)
 
-  // Buscar en los próximos 7 días
-  for (let i = 1; i <= 7; i++) {
-    const nextIndex = (currentIndex + i) % DAYS_ORDER.length
-    const nextDay = DAYS_ORDER[nextIndex]
-    const nextHours = businessHours.find((h) => h.dayOfWeek === nextDay && h.isEnabled)
+  for (let offset = 0; offset < DAYS_ORDER.length; offset++) {
+    const day = DAYS_ORDER[(currentIndex + offset) % DAYS_ORDER.length]
+    const hours = businessHours.find((h) => h.dayOfWeek === day && h.isEnabled)
+    if (!hours) continue
 
-    if (nextHours) {
+    const openMinutes = timeToMinutes(hours.openTime)
+    const closeMinutesRaw = timeToMinutes(hours.closeTime)
+    let closeMinutes = closeMinutesRaw
+
+    // Si cruza medianoche, el cierre es el día siguiente
+    if (hours.crossesMidnight || closeMinutes <= openMinutes) {
+      closeMinutes += 24 * 60
+    }
+
+    const base = offset * 24 * 60
+    const openAbsolute = openMinutes + base
+    const closeAbsolute = closeMinutes + base
+
+    // Si el siguiente horario aún no empieza, este es el próximo
+    if (currentMinutes < openAbsolute) {
       return {
-        day: nextDay,
-        openTime: nextHours.openTime,
-        closeTime: nextHours.closeTime,
-        crossesMidnight: false,
+        day,
+        openTime: hours.openTime,
+        closeTime: hours.closeTime,
+        crossesMidnight: hours.crossesMidnight ?? false,
+      }
+    }
+
+    // Si estuviéramos dentro del rango, este slot sigue vigente
+    if (currentMinutes >= openAbsolute && currentMinutes < closeAbsolute) {
+      return {
+        day,
+        openTime: hours.openTime,
+        closeTime: hours.closeTime,
+        crossesMidnight: hours.crossesMidnight ?? false,
       }
     }
   }
@@ -239,7 +269,10 @@ function buildClosedMessage(
       return '⏰ Lo sentimos, actualmente no tenemos servicio. Por favor intenta más tarde.'
     }
     const dayName = DAY_NAMES_ES[scheduleInfo.day]
-    return `⏰ Lo sentimos, hoy no tenemos servicio. Nuestro próximo día de atención es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime}.`
+    if (scheduleInfo.crossesMidnight) {
+      return `⏰ Lo sentimos, hoy no tenemos servicio. Nuestro próximo horario es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime} del día siguiente.`
+    }
+    return `⏰ Lo sentimos, hoy no tenemos servicio. Nuestro próximo horario es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime}.`
   }
 
   if (reason === 'closed_today') {
@@ -247,7 +280,10 @@ function buildClosedMessage(
       return '⏰ Lo sentimos, actualmente estamos cerrados.'
     }
     const dayName = DAY_NAMES_ES[scheduleInfo.day]
-    return `⏰ Lo sentimos, hoy no tenemos servicio. Nuestro próximo día de atención es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime}.`
+    if (scheduleInfo.crossesMidnight) {
+      return `⏰ Lo sentimos, hoy no tenemos servicio. Nuestro próximo horario es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime} del día siguiente.`
+    }
+    return `⏰ Lo sentimos, hoy no tenemos servicio. Nuestro próximo horario es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime}.`
   }
 
   if (reason === 'outside_hours') {
@@ -256,9 +292,9 @@ function buildClosedMessage(
     }
     const dayName = DAY_NAMES_ES[scheduleInfo.day]
     if (scheduleInfo.crossesMidnight) {
-      return `⏰ Lo sentimos, estamos cerrados en este momento. Hoy *${dayName}* nuestro horario de atención es de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime} del día siguiente.`
+      return `⏰ Lo sentimos, estamos cerrados en este momento. Nuestro próximo horario es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime} del día siguiente.`
     }
-    return `⏰ Lo sentimos, estamos cerrados en este momento. Hoy *${dayName}* nuestro horario de atención es de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime}.`
+    return `⏰ Lo sentimos, estamos cerrados en este momento. Nuestro próximo horario es el *${dayName}* de ${scheduleInfo.openTime} a ${scheduleInfo.closeTime}.`
   }
 
   return '⏰ Lo sentimos, estamos cerrados en este momento.'
