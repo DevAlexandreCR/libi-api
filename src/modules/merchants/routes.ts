@@ -50,7 +50,7 @@ router.post(
 router.get(
   '/:merchantId',
   requireAuth,
-  requireRole(UserRole.SUPER_ADMIN),
+  requireMerchantAccess(),
   async (req, res, next) => {
     try {
       const merchant = await getMerchant(req.params.merchantId)
@@ -64,7 +64,7 @@ router.get(
 router.put(
   '/:merchantId',
   requireAuth,
-  requireRole(UserRole.SUPER_ADMIN),
+  requireMerchantAccess(),
   validate(z.object({ body: merchantBody.partial() })),
   async (req, res, next) => {
     try {
