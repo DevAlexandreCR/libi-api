@@ -53,6 +53,13 @@ enum MessageRole {
   system
 }
 
+enum DemoRequestStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DISCARDED
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -326,4 +333,17 @@ model PaymentAccount {
   updatedAt       DateTime           @updatedAt
 
   @@index([merchantId])
+}
+
+model DemoRequest {
+  id        String            @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  message   String?
+  status    DemoRequestStatus @default(NEW)
+  source    String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 }
