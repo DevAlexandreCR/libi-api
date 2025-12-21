@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'libi-api',
-    script: './dist/index.js',
+    script: './dist/src/index.js',
     cwd: '/var/www/libi/api',
     instances: 1,
     exec_mode: 'cluster',
