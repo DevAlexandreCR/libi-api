@@ -4,7 +4,7 @@ node_modules
 dist
 coverage
 .prisma
-uploads
+uploads/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
