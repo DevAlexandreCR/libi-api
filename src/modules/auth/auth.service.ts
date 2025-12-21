@@ -23,7 +23,7 @@ export async function login(email: string, password: string): Promise<LoginResul
   if (!valid) throw unauthorized('Invalid credentials')
 
   const payload = { id: user.id, role: user.role, merchantId: user.merchantId }
-  const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRES_IN })
+  const token = jwt.sign(payload, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRES_IN } as any)
 
   return {
     token,

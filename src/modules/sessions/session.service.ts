@@ -86,7 +86,7 @@ export async function appendSessionMessage(
 
 export async function updateSessionState(
   sessionId: string,
-  state: Prisma.JsonValue,
+  state: Prisma.InputJsonValue,
   status?: SessionStatus
 ) {
   const updated = await prisma.session.update({

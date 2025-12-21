@@ -15,8 +15,8 @@ export async function listMerchants(search?: string) {
   const where: Prisma.MerchantWhereInput = search
     ? {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { slug: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search } },
+          { slug: { contains: search } },
         ],
       }
     : {}

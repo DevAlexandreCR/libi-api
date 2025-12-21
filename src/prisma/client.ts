@@ -17,6 +17,10 @@ if (config.NODE_ENV !== 'production') {
   globalThis.prismaGlobal = prisma;
 }
 
-prisma.$on('error', (event) => {
-  logger.error({ event }, 'Prisma error');
-});
+// Log Prisma errors
+if (config.NODE_ENV !== 'production') {
+  // @ts-ignore - Prisma error event type
+  prisma.$on('error', (event: any) => {
+    logger.error({ event }, 'Prisma error');
+  });
+}

@@ -14,7 +14,10 @@ router.post(
   upload.array('files', 5),
   async (req, res, next) => {
     try {
-      const files = req.files as Express.Multer.File[]
+      const files = req.files as Express.Multer.File[] | undefined
+      if (!files) {
+        return res.status(400).json({ error: 'No files uploaded' })
+      }
       const uploads = await saveUploads(req.params.merchantId, files)
       res.status(201).json(uploads)
     } catch (err) {
